@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  livestream:
+    build: .
+    environment:
+      - YOUTUBE_STREAM_KEY=${YOUTUBE_STREAM_KEY}
+      - URL_TO_CAPTURE=${URL_TO_CAPTURE}
+      - FPS=${FPS:-30}
+      - OVERLAY_TEXT=${OVERLAY_TEXT:-}  # Optional
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix  # For Chromium
+    restart: unless-stopped

@@ -13,12 +13,22 @@ def main():
     if missing_vars:
         raise ValueError(f"Missing required environment variables: {', '.join(missing_vars)}")
     
+    # Define rotating messages
+    rotating_messages = [
+        "HB Capital Market Overview Stream",
+        "⚠️ DISCLAIMER: This content is for informational purposes only. Not financial advice.",
+        "Market analysis and commentary provided by HB Capital",
+        "⚠️ Past performance is not indicative of future results",
+        "Subscribe for daily market insights"
+    ]
+    
     try:
         # Initialize web capture with overlay
         capture = WebCapture(
             url=os.getenv('URL_TO_CAPTURE'),
             fps=int(os.getenv('FPS', '30')),
-            overlay_text=os.getenv('OVERLAY_TEXT', ' Live: Trading Stream')  # Default overlay text
+            overlay_text=os.getenv('OVERLAY_TEXT'),  # Can be None, will use rotating messages
+            rotating_messages=rotating_messages
         )
         
         # Initialize YouTube streamer
