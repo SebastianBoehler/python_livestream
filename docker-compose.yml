@@ -8,6 +8,11 @@ services:
       - URL_TO_CAPTURE=${URL_TO_CAPTURE}
       - FPS=${FPS:-30}
       - OVERLAY_TEXT=${OVERLAY_TEXT:-}  # Optional
+      - SDL_AUDIODRIVER=dummy  # Use dummy audio driver for headless operation
     volumes:
       - /tmp/.X11-unix:/tmp/.X11-unix  # For Chromium
+      - type: bind
+        source: ./audio
+        target: /app/audio
+        read_only: true  # Make it read-only to ensure we don't accidentally modify it
     restart: unless-stopped

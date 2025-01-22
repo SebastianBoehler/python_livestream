@@ -6,7 +6,7 @@ ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     DEBIAN_FRONTEND=noninteractive
 
-# Install system dependencies, Chromium, and FFmpeg
+# Install system dependencies, Chromium, FFmpeg, and SDL for audio
 RUN apt-get update && apt-get install -y --no-install-recommends \
     wget \
     gnupg \
@@ -15,6 +15,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     chromium \
     chromium-driver \
     ffmpeg \
+    libsdl2-2.0-0 \
+    libsdl2-mixer-2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
 # Create and set working directory

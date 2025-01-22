@@ -36,7 +36,8 @@ def main():
             stream_key=os.getenv('YOUTUBE_STREAM_KEY'),
             video_bitrate=os.getenv('VIDEO_BITRATE', '3000k'),
             buffer_size=os.getenv('BUFFER_SIZE', '6000k'),
-            fps=int(os.getenv('FPS', '30'))
+            fps=int(os.getenv('FPS', '30')),
+            audio_file=None  # Will be set automatically by WebCapture
         )
         
         # Start streaming
