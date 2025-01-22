@@ -14,10 +14,11 @@ def main():
         raise ValueError(f"Missing required environment variables: {', '.join(missing_vars)}")
     
     try:
-        # Initialize web capture
+        # Initialize web capture with overlay
         capture = WebCapture(
             url=os.getenv('URL_TO_CAPTURE'),
-            fps=int(os.getenv('FPS', '30'))
+            fps=int(os.getenv('FPS', '30')),
+            overlay_text=os.getenv('OVERLAY_TEXT', ' Live: Trading Stream')  # Default overlay text
         )
         
         # Initialize YouTube streamer

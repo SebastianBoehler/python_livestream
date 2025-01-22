@@ -3,22 +3,26 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 import time
+from .overlay import StreamOverlay
 
 class WebCapture:
     """Handle web page capture using Selenium Chrome WebDriver."""
     
-    def __init__(self, url: str, fps: int = 30):
+    def __init__(self, url: str, fps: int = 30, overlay_text: str = None):
         """
         Initialize web capture.
         
         Args:
             url (str): URL to capture
             fps (int): Frames per second for capture
+            overlay_text (str): Text to display in the overlay banner
         """
         self.url = url
         self.fps = fps
         self.delay = 1.0 / fps
         self.driver = None
+        self.overlay = StreamOverlay() if overlay_text else None
+        self.overlay_text = overlay_text
     
     def setup_chrome_driver(self):
         """Setup and configure Chrome WebDriver."""
@@ -83,6 +87,11 @@ class WebCapture:
             while True:
                 # Capture screenshot as PNG bytes
                 png_bytes = self.driver.get_screenshot_as_png()
+                
+                # Add overlay if configured
+                if self.overlay and self.overlay_text:
+                    png_bytes = self.overlay.add_banner(png_bytes, self.overlay_text)
+                
                 streamer.write_frame(png_bytes)
                 
                 frame_count += 1

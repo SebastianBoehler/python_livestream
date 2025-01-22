@@ -6,5 +6,6 @@ This package provides functionality for capturing web content and streaming it t
 
 from .capture import WebCapture
 from .streamer import YouTubeStreamer
+from .overlay import StreamOverlay
 
-__all__ = ['WebCapture', 'YouTubeStreamer']
+__all__ = ['WebCapture', 'YouTubeStreamer', 'StreamOverlay']
