@@ -1,5 +1,4 @@
-selenium==4.15.2
-webdriver-manager==4.0.1
+playwright==1.41.1
 opencv-python
 python-dotenv
 Pillow

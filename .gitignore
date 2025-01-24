@@ -40,3 +40,5 @@ frames/
 # Environment variables
 .env
 *.env
+
+# Removing package.json from gitignore as we want to track it

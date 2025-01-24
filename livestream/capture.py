@@ -1,12 +1,10 @@
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.chrome.service import Service
+from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
 import time
 import os
 from .overlay import StreamOverlay
 
 class WebCapture:
-    """Handle web page capture using Selenium Chromium WebDriver."""
+    """Handle web page capture using Playwright."""
     
     def __init__(self, url: str, fps: int = 30, overlay_text: str = None, rotating_messages: list = None,
                  audio_file: str = None):
@@ -23,38 +21,92 @@ class WebCapture:
         self.url = url
         self.fps = fps
         self.delay = 1.0 / fps
-        self.driver = None
+        self.page = None
+        self.browser = None
+        self.playwright = None
         self.overlay = StreamOverlay(messages=rotating_messages) if (overlay_text or rotating_messages) else None
         self.overlay_text = overlay_text
         self.audio_file = audio_file
     
-    def setup_chrome_driver(self):
-        """Setup and configure Chromium WebDriver."""
-        chrome_options = Options()
-        chrome_options.add_argument("--headless=new")
-        chrome_options.add_argument("--no-sandbox")
-        chrome_options.add_argument("--disable-dev-shm-usage")
-        chrome_options.add_argument("--disable-gpu")
-        chrome_options.add_argument("--window-size=1920,1080")
-        chrome_options.add_argument("--force-device-scale-factor=1")
-        chrome_options.add_argument("--hide-scrollbars")
+    def setup_browser(self):
+        """Setup and configure Playwright browser."""
+        self.playwright = sync_playwright().start()
+        self.browser = self.playwright.chromium.launch(
+            headless=True,
+            args=[
+                '--no-sandbox',
+                '--disable-dev-shm-usage',
+                '--disable-gpu',
+                '--window-size=1920,1080',
+                '--force-device-scale-factor=1',
+            ]
+        )
+        context = self.browser.new_context(
+            viewport={'width': 1920, 'height': 1080},
+            device_scale_factor=1,
+            user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
+        )
+        page = context.new_page()
+        page.set_default_timeout(30000)  # Set default timeout to 30 seconds
+        return page
+    
+    def load_page(self, max_retries=3):
+        """
+        Load the target page with retries.
         
-        # Use system-installed Chromium
-        chrome_options.binary_location = "/usr/bin/chromium"
+        Args:
+            max_retries (int): Maximum number of retry attempts
         
-        # Use system-installed chromedriver
-        service = Service('/usr/bin/chromedriver')
-        driver = webdriver.Chrome(service=service, options=chrome_options)
+        Returns:
+            bool: True if page loaded successfully, False otherwise
+        """
+        for attempt in range(max_retries):
+            try:
+                print(f"Loading page (attempt {attempt + 1}/{max_retries})...")
+                
+                # Navigate to the page with a shorter timeout for initial response
+                response = self.page.goto(self.url, wait_until='commit', timeout=20000)
+                if not response:
+                    print("No response received, retrying...")
+                    continue
+                    
+                if not response.ok:
+                    print(f"HTTP {response.status}: {response.status_text}")
+                    continue
+                
+                # Wait for initial render
+                self.page.wait_for_load_state('domcontentloaded', timeout=10000)
+                
+                # Try to wait for network idle, but don't fail if it times out
+                try:
+                    self.page.wait_for_load_state('networkidle', timeout=5000)
+                except PlaywrightTimeoutError:
+                    print("Network not idle, but continuing...")
+                
+                # Hide scrollbars and set overflow
+                self.page.evaluate("""
+                    () => {
+                        document.body.style.overflow = 'hidden';
+                        document.documentElement.style.overflow = 'hidden';
+                    }
+                """)
+                
+                return True
+                
+            except PlaywrightTimeoutError:
+                print(f"Timeout on attempt {attempt + 1}/{max_retries}")
+                if attempt < max_retries - 1:
+                    print("Retrying...")
+                    time.sleep(1)  # Wait a bit before retrying
+                continue
+            except Exception as e:
+                print(f"Error loading page: {e}")
+                if attempt < max_retries - 1:
+                    print("Retrying...")
+                    time.sleep(1)
+                continue
         
-        # Set viewport size explicitly
-        driver.execute_cdp_cmd('Emulation.setDeviceMetricsOverride', {
-            'mobile': False,
-            'width': 1920,
-            'height': 1080,
-            'deviceScaleFactor': 1,
-        })
-        
-        return driver
+        return False
     
     def start_capture(self, streamer):
         """
@@ -63,27 +115,13 @@ class WebCapture:
         Args:
             streamer: Streamer object with write_frame method
         """
-        print("Launching headless Chromium...")
-        self.driver = self.setup_chrome_driver()
+        print("Launching headless browser...")
+        self.page = self.setup_browser()
         
         try:
-            self.driver.get(self.url)
-            print("Waiting for page to load...")
-            time.sleep(5)  # Give the page time to load
-            
-            # Set viewport size again after page load
-            self.driver.execute_cdp_cmd('Emulation.setDeviceMetricsOverride', {
-                'mobile': False,
-                'width': 1920,
-                'height': 1080,
-                'deviceScaleFactor': 1,
-            })
-            
-            # Force a specific document size
-            self.driver.execute_script("""
-                document.body.style.overflow = 'hidden';
-                document.documentElement.style.overflow = 'hidden';
-            """)
+            # Try to load the page
+            if not self.load_page():
+                raise Exception("Failed to load page after multiple retries")
             
             # Find the first audio file in the audio directory
             audio_file = None
@@ -92,59 +130,72 @@ class WebCapture:
                 audio_files = [f for f in os.listdir(audio_dir) 
                              if f.lower().endswith(('.mp3', '.wav'))]
                 if audio_files:
-                    # Use os.path.join for proper path handling
                     audio_file = os.path.join(audio_dir, audio_files[0])
                     print(f"Found audio file: {audio_file}")
-                    # Verify file exists and is readable
                     if not os.path.isfile(audio_file):
                         print(f"Warning: Audio file not found: {audio_file}")
                         audio_file = None
-                    elif not os.access(audio_file, os.R_OK):
-                        print(f"Warning: Audio file not readable: {audio_file}")
-                        audio_file = None
-                    else:
-                        # Double-check the file exists
-                        print(f"Verifying audio file exists: {os.path.exists(audio_file)}")
-                        print(f"File permissions: {oct(os.stat(audio_file).st_mode)[-3:]}")
-                else:
-                    print("No audio files found in audio directory")
-            else:
-                print(f"Audio directory not found at: {audio_dir}")
             
             # Set the audio file for the streamer
             if hasattr(streamer, 'audio_file'):
                 streamer.audio_file = audio_file
             
-            print(f"Starting to capture at {self.fps} FPS.")
+            print("Starting stream...")
+            last_frame_time = time.time()
             frame_count = 0
+            consecutive_errors = 0
             
             while True:
-                # Capture screenshot as PNG bytes
-                png_bytes = self.driver.get_screenshot_as_png()
-                
-                # Add overlay if configured
-                if self.overlay:
-                    png_bytes = self.overlay.add_banner(png_bytes, self.overlay_text)
-                
-                streamer.write_frame(png_bytes)
-                
-                frame_count += 1
-                if frame_count % self.fps == 0:  # Print status every second
-                    print(f"Frames sent: {frame_count}", end="\r")
-                
-                time.sleep(self.delay)
-                
+                try:
+                    # Capture screenshot
+                    screenshot = self.page.screenshot(type='png', timeout=5000)
+                    consecutive_errors = 0  # Reset error counter on success
+                    
+                    # Add overlay if configured
+                    if self.overlay:
+                        screenshot = self.overlay.add_banner(screenshot, self.overlay_text)
+                    
+                    # Write frame to streamer
+                    streamer.write_frame(screenshot)
+                    
+                    # Control FPS
+                    current_time = time.time()
+                    sleep_time = self.delay - (current_time - last_frame_time)
+                    if sleep_time > 0:
+                        time.sleep(sleep_time)
+                    last_frame_time = current_time
+                    
+                    # Print status every second
+                    frame_count += 1
+                    if frame_count % self.fps == 0:
+                        print(f"Frames captured: {frame_count}", end="\r")
+                    
+                except PlaywrightTimeoutError:
+                    consecutive_errors += 1
+                    print(f"\nWarning: Screenshot timed out (error {consecutive_errors}/3)")
+                    if consecutive_errors >= 3:
+                        print("Too many consecutive errors, reloading page...")
+                        if not self.load_page():
+                            raise Exception("Failed to reload page after errors")
+                        consecutive_errors = 0
+                    continue
+                    
+        except KeyboardInterrupt:
+            print("\nStopping capture...")
         except Exception as e:
-            print(f"Error in capture: {str(e)}")
-            raise
+            print(f"Error during capture: {e}")
         finally:
-            if self.driver:
-                self.driver.quit()
+            self.cleanup()
     
     def cleanup(self):
         """Clean up resources."""
-        if self.driver:
+        if self.browser:
             try:
-                self.driver.quit()
+                self.browser.close()
             except Exception as e:
-                print(f"Error during driver cleanup: {e}")
+                print(f"Error during browser cleanup: {e}")
+        if self.playwright:
+            try:
+                self.playwright.stop()
+            except Exception as e:
+                print(f"Error during playwright cleanup: {e}")

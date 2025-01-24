@@ -1,0 +1,10 @@
+{
+  "name": "python-livestream",
+  "version": "1.0.0",
+  "description": "Python livestream application",
+  "scripts": {
+    "docker:livestream": "npm run docker:build-livestream && npm run docker:push-livestream",
+    "docker:build-livestream": "docker build --platform linux/amd64 -t python-livestream -f Dockerfile .",
+    "docker:push-livestream": "docker tag python-livestream us-docker.pkg.dev/stellar-cumulus-437308-n4/python-livestream/app:latest && docker push us-docker.pkg.dev/stellar-cumulus-437308-n4/python-livestream/app:latest"
+  }
+}
