@@ -74,12 +74,16 @@ pip install chatterbox-tts torchaudio
 
 Run `chatterbox_example.py` to generate a quick demo clip.
 
+The helper module `chatterbox_helper.py` automatically splits long text into
+300 character chunks so Chatterbox can synthesize lengthy news scripts.
+
 ## Continuous News Stream
 
 Set `NEWS_INTERVAL_MINUTES` in your `.env` file to control how often a new news
 segment is generated. The `main.py` script keeps streaming `screenshot.png` and
-background music while regularly creating fresh news audio using Google Gemini
-and the Chatterbox TTS model.
+background music at low volume while regularly creating fresh news audio using
+Google Gemini and the Chatterbox TTS model. Between segments the background
+music keeps the livestream alive so YouTube does not drop the connection.
 
 ## Troubleshooting
 

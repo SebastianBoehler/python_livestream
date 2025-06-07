@@ -5,47 +5,15 @@ import time
 import logging
 from dotenv import load_dotenv
 import torch
-import torchaudio as ta
 from chatterbox.tts import ChatterboxTTS
 from llm import generate_news_content
 from utils import get_audio_duration
+from chatterbox_helper import generate_tts_audio
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-def generate_tts_audio(text: str, output_file: str, model: ChatterboxTTS) -> str:
-    """
-    Generate TTS audio from text.
-    
-    Args:
-        text: The text to convert to speech.
-        output_file: Path to save the audio file.
-        model: Initialized ChatterboxTTS model.
-    
-    Returns:
-        Path to the generated audio file.
-    """
-    logger.info("Generating TTS audio...")
-    
-    # Create output directory if it doesn't exist
-    os.makedirs(os.path.dirname(output_file), exist_ok=True)
-
-    # Generate audio
-    try:
-        wav = model.generate(text)
-    except Exception as e:
-        logger.warning(f"TTS generation failed with error: {e}. Falling back to truncated text.")
-        truncated_text = text[:300]
-        try:
-            wav = model.generate(truncated_text)
-        except Exception as e2:
-            logger.error(f"Fallback TTS generation also failed: {e2}")
-            raise
-    ta.save(output_file, wav, model.sr)
-    
-    logger.info(f"TTS audio generated and saved to: {output_file}")
-    return output_file
 
 
 def stream_segment(
@@ -53,10 +21,11 @@ def stream_segment(
     image_path: str,
     background_music_path: str,
     news_text: str,
+    available_time: float,
     ffmpeg_path: str = "ffmpeg",
     tts_model: ChatterboxTTS = None,
 ) -> float:
-    """Stream a single news segment and return its duration in seconds."""
+    """Stream a single news segment and filler background music."""
 
     if tts_model is None:
         device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -67,9 +36,13 @@ def stream_segment(
     timestamp = int(time.time())
     tts_audio_path = os.path.join(tts_dir, f"news_{timestamp}.wav")
 
+    start_time = time.time()
     generate_tts_audio(news_text, tts_audio_path, model=tts_model)
+    tts_generation_time = time.time() - start_time
 
     segment_duration = get_audio_duration(tts_audio_path, ffmpeg_path)
+    filler_duration = max(available_time - tts_generation_time - segment_duration, 0)
+    total_duration = segment_duration + filler_duration
 
     fps = 30
     video_bitrate = "4500k"
@@ -113,7 +86,7 @@ def stream_segment(
         "-bufsize",
         buffer_size,
         "-filter_complex",
-        "[1:a]volume=1.0[news];[2:a]volume=0.04[bg];[news][bg]amix=inputs=2:duration=longest[aout]",
+        "[1:a]apad,volume=1.0[news];[2:a]volume=0.04[bg];[news][bg]amix=inputs=2:duration=longest[aout]",
         "-map",
         "0:v",
         "-map",
@@ -125,7 +98,7 @@ def stream_segment(
         "-ar",
         "44100",
         "-t",
-        str(segment_duration),
+        str(total_duration),
         "-f",
         "flv",
         rtmp_url,
@@ -163,7 +136,7 @@ def stream_segment(
         logger.info(f"Removed temporary file: {tts_audio_path}")
 
     logger.info("Segment finished")
-    return segment_duration
+    return total_duration
 
 
 def main():
@@ -208,23 +181,23 @@ def main():
             " Use google search as a grounding for the news."
         )
 
+        interval_seconds = interval_minutes * 60
+
         while True:
-            start = time.time()
+            loop_start = time.time()
             news_content = generate_news_content(news_topic)
             logger.info("Generated news text, starting segment...")
-            duration = stream_segment(
+            pre_segment_time = time.time() - loop_start
+            remaining_time = max(interval_seconds - pre_segment_time, 0)
+            stream_segment(
                 stream_key,
                 image_path,
                 background_music_path,
                 news_content,
+                available_time=remaining_time,
                 ffmpeg_path=ffmpeg_path,
                 tts_model=tts_model,
             )
-
-            elapsed = time.time() - start
-            sleep_time = max(interval_minutes * 60 - elapsed, 0)
-            logger.info(f"Next segment in {sleep_time/60:.2f} minutes")
-            time.sleep(sleep_time)
 
     except Exception as e:
         logger.error(f"Error during livestream: {str(e)}")

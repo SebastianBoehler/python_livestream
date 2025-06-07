@@ -16,7 +16,7 @@ from dotenv import load_dotenv
 
 # Import existing project functions
 from llm import generate_news_content
-from main import generate_tts_audio
+from chatterbox_helper import generate_tts_audio
 from utils import prepare_livestream_audio
 
 # Configure logging
