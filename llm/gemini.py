@@ -1,23 +1,16 @@
 #!/usr/bin/env python3
 import os
 import logging
-import tempfile
 import datetime
-from typing import Optional, List, Dict, Any
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
-import time
 from google.genai.types import (
     FunctionCallingConfig,
     FunctionCallingConfigMode,
-    FunctionDeclaration,
     GenerateContentConfig,
-    Part,
-    Schema,
     Tool,
     ToolConfig,
-    Type,
 )
 
 # Configure logging
@@ -44,19 +37,19 @@ def initialize_gemini_client():
     logger.info("Google Generative AI API initialized successfully")
     return client
 
-def generate_news_content(
-    topic: str = "latest finance and crypto news and macro economic landscape",
+def generate(
+    prompt: str = "latest finance and crypto news and macro economic landscape",
     model_name: str = "gemini-2.0-flash",
     temperature: float = 0.7,
-    max_output_tokens: int = 512, # max token limit is 8192
+    max_output_tokens: int = 512,
     top_p: float = 0.95,
-    top_k: int = 40
+    top_k: int = 40,
 ) -> str:
     """
-    Generate news content using Google Gemini with Google Search grounding.
-    
+    Generate text using Google Gemini with Google Search grounding.
+
     Args:
-        topic (str): The news topic to generate content about
+        prompt (str): Prompt to generate content from
         model_name (str): Gemini model to use
         temperature (float): Sampling temperature (0.0-1.0)
         max_output_tokens (int): Maximum output length
@@ -64,7 +57,7 @@ def generate_news_content(
         top_k (int): Top-k sampling parameter
         
     Returns:
-        str: Generated news content as a string
+        str: Generated text content
     
     Raises:
         Exception: If content generation fails
@@ -105,7 +98,10 @@ def generate_news_content(
         
         # Create prompt for news generation
         current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        prompt = f"Create a comprehensive news report about {topic}. Current time: {current_time}. Make sure to cover only news from the last 24 hours."
+        full_prompt = (
+            f"Create a comprehensive news report about {prompt}. Current time: {current_time}. "
+            "Make sure to cover only news from the last 24 hours."
+        )
         
         # Configure Google Search as a tool
         google_search_tool = types.Tool(
@@ -129,12 +125,12 @@ def generate_news_content(
             response_mime_type='text/plain'
         )
         
-        logger.info(f"Generating news content about: {topic}")
+        logger.info("Generating news content")
         
         # Generate content
         response = client.models.generate_content(
             model=model_name,
-            contents=[prompt],
+            contents=[full_prompt],
             config=generate_config
         )
         

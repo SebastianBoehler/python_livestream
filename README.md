@@ -74,7 +74,7 @@ pip install chatterbox-tts torchaudio
 
 Run `chatterbox_example.py` to generate a quick demo clip.
 
-The helper module `chatterbox_helper.py` automatically splits long text into
+The helper module `tts/chatterbox.py` automatically splits long text into
 300 character chunks so Chatterbox can synthesize lengthy news scripts.
 
 TTS generation happens in a background thread so the livestream never pauses

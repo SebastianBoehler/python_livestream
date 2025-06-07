@@ -7,9 +7,9 @@ from concurrent.futures import ThreadPoolExecutor, Future
 from dotenv import load_dotenv
 import torch
 from chatterbox.tts import ChatterboxTTS
-from llm import generate_news_content
+from llm import generate as generate_news_content
 from utils import get_audio_duration
-from chatterbox_helper import generate_tts_audio
+from tts.chatterbox import generate as generate_tts_audio
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -178,7 +178,7 @@ def main():
         # Pre-generate the first segment
         first_news = generate_news_content(news_topic)
         audio_path = os.path.join(tts_dir, f"news_{int(time.time())}.wav")
-        future: Future[str] = executor.submit(generate_tts_audio, first_news, audio_path, tts_model)
+        future: Future[str] = executor.submit(generate_tts_audio, [first_news], audio_path, tts_model)
 
         while True:
             # start_loop = time.time() was unused
@@ -189,7 +189,7 @@ def main():
             # Kick off generation for the next segment
             next_news = generate_news_content(news_topic)
             next_audio = os.path.join(tts_dir, f"news_{int(time.time())}.wav")
-            future = executor.submit(generate_tts_audio, next_news, next_audio, tts_model)
+            future = executor.submit(generate_tts_audio, [next_news], next_audio, tts_model)
 
             stream_segment(
                 stream_key,

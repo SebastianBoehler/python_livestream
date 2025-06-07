@@ -1,5 +1,6 @@
 import torch
 import torchaudio as ta
+from typing import List
 from chatterbox.tts import ChatterboxTTS
 
 MAX_CHARS = 300
@@ -53,8 +54,9 @@ def synthesize_long_text(text: str, model: ChatterboxTTS, max_chars: int = MAX_C
         return torch.empty(0)
     return torch.cat(segments, dim=1)
 
-def generate_tts_audio(text: str, output_file: str, model: ChatterboxTTS, max_chars: int = MAX_CHARS) -> str:
-    """Generate a single audio file from potentially long text."""
+def generate(lines: List[str], output_file: str, model: ChatterboxTTS, max_chars: int = MAX_CHARS) -> str:
+    """Generate a single audio file from multiple text segments."""
+    text = " ".join(lines)
     waveform = synthesize_long_text(text, model, max_chars)
     ta.save(output_file, waveform, model.sr)
     return output_file
