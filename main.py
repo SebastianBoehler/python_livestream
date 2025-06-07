@@ -3,73 +3,33 @@ import os
 import subprocess
 import time
 import logging
+from concurrent.futures import ThreadPoolExecutor, Future
 from dotenv import load_dotenv
 import torch
-import torchaudio as ta
 from chatterbox.tts import ChatterboxTTS
 from llm import generate_news_content
 from utils import get_audio_duration
+from chatterbox_helper import generate_tts_audio
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-def generate_tts_audio(text: str, output_file: str, model: ChatterboxTTS) -> str:
-    """
-    Generate TTS audio from text.
-    
-    Args:
-        text: The text to convert to speech.
-        output_file: Path to save the audio file.
-        model: Initialized ChatterboxTTS model.
-    
-    Returns:
-        Path to the generated audio file.
-    """
-    logger.info("Generating TTS audio...")
-    
-    # Create output directory if it doesn't exist
-    os.makedirs(os.path.dirname(output_file), exist_ok=True)
-
-    # Generate audio
-    try:
-        wav = model.generate(text)
-    except Exception as e:
-        logger.warning(f"TTS generation failed with error: {e}. Falling back to truncated text.")
-        truncated_text = text[:300]
-        try:
-            wav = model.generate(truncated_text)
-        except Exception as e2:
-            logger.error(f"Fallback TTS generation also failed: {e2}")
-            raise
-    ta.save(output_file, wav, model.sr)
-    
-    logger.info(f"TTS audio generated and saved to: {output_file}")
-    return output_file
 
 
 def stream_segment(
     stream_key: str,
     image_path: str,
     background_music_path: str,
-    news_text: str,
+    tts_audio_path: str,
+    available_time: float,
     ffmpeg_path: str = "ffmpeg",
-    tts_model: ChatterboxTTS = None,
 ) -> float:
-    """Stream a single news segment and return its duration in seconds."""
-
-    if tts_model is None:
-        device = "cuda" if torch.cuda.is_available() else "cpu"
-        tts_model = ChatterboxTTS.from_pretrained(device=device)
-
-    tts_dir = os.path.join(os.getcwd(), "audio", "tts")
-    os.makedirs(tts_dir, exist_ok=True)
-    timestamp = int(time.time())
-    tts_audio_path = os.path.join(tts_dir, f"news_{timestamp}.wav")
-
-    generate_tts_audio(news_text, tts_audio_path, model=tts_model)
+    """Stream a pre-generated news segment and filler background music."""
 
     segment_duration = get_audio_duration(tts_audio_path, ffmpeg_path)
+    filler_duration = max(available_time - segment_duration, 0)
+    total_duration = segment_duration + filler_duration
 
     fps = 30
     video_bitrate = "4500k"
@@ -113,7 +73,7 @@ def stream_segment(
         "-bufsize",
         buffer_size,
         "-filter_complex",
-        "[1:a]volume=1.0[news];[2:a]volume=0.04[bg];[news][bg]amix=inputs=2:duration=longest[aout]",
+        "[1:a]apad,volume=1.0[news];[2:a]volume=0.04[bg];[news][bg]amix=inputs=2:duration=longest[aout]",
         "-map",
         "0:v",
         "-map",
@@ -125,7 +85,7 @@ def stream_segment(
         "-ar",
         "44100",
         "-t",
-        str(segment_duration),
+        str(total_duration),
         "-f",
         "flv",
         rtmp_url,
@@ -163,7 +123,7 @@ def stream_segment(
         logger.info(f"Removed temporary file: {tts_audio_path}")
 
     logger.info("Segment finished")
-    return segment_duration
+    return total_duration
 
 
 def main():
@@ -199,7 +159,7 @@ def main():
         device = "cuda" if torch.cuda.is_available() else "cpu"
         tts_model = ChatterboxTTS.from_pretrained(device=device)
 
-        interval_minutes = int(os.getenv("NEWS_INTERVAL_MINUTES", "10"))
+        interval_minutes = int(os.getenv("NEWS_INTERVAL_MINUTES", "30"))
 
         news_topic = (
             "Latest news from the last 24h about crypto and blockchain."
@@ -208,23 +168,37 @@ def main():
             " Use google search as a grounding for the news."
         )
 
+        interval_seconds = interval_minutes * 60
+
+        tts_dir = os.path.join(os.getcwd(), "audio", "tts")
+        os.makedirs(tts_dir, exist_ok=True)
+
+        executor = ThreadPoolExecutor(max_workers=1)
+
+        # Pre-generate the first segment
+        first_news = generate_news_content(news_topic)
+        audio_path = os.path.join(tts_dir, f"news_{int(time.time())}.wav")
+        future: Future[str] = executor.submit(generate_tts_audio, first_news, audio_path, tts_model)
+
         while True:
-            start = time.time()
-            news_content = generate_news_content(news_topic)
-            logger.info("Generated news text, starting segment...")
-            duration = stream_segment(
+            # start_loop = time.time() was unused
+
+            # Wait for the prepared audio
+            tts_audio_path = future.result()
+
+            # Kick off generation for the next segment
+            next_news = generate_news_content(news_topic)
+            next_audio = os.path.join(tts_dir, f"news_{int(time.time())}.wav")
+            future = executor.submit(generate_tts_audio, next_news, next_audio, tts_model)
+
+            stream_segment(
                 stream_key,
                 image_path,
                 background_music_path,
-                news_content,
+                tts_audio_path,
+                available_time=interval_seconds,
                 ffmpeg_path=ffmpeg_path,
-                tts_model=tts_model,
             )
-
-            elapsed = time.time() - start
-            sleep_time = max(interval_minutes * 60 - elapsed, 0)
-            logger.info(f"Next segment in {sleep_time/60:.2f} minutes")
-            time.sleep(sleep_time)
 
     except Exception as e:
         logger.error(f"Error during livestream: {str(e)}")
