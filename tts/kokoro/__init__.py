@@ -1,3 +1,0 @@
-"""
-Kokoro TTS package initialization.
-"""

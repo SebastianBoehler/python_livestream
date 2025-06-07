@@ -47,8 +47,8 @@ def initialize_gemini_client():
 def generate_news_content(
     topic: str = "latest finance and crypto news and macro economic landscape",
     model_name: str = "gemini-2.0-flash",
-    temperature: float = 0.5,
-    max_output_tokens: int = 8192, # max token limit is 8192
+    temperature: float = 0.7,
+    max_output_tokens: int = 2048, # max token limit is 8192
     top_p: float = 0.95,
     top_k: int = 40
 ) -> str:
@@ -101,8 +101,6 @@ def generate_news_content(
 
         Stay way from using ``` or any other formatting and do not include any citations or references.
         Further do not include exact asset prices or any other exact numbers, only use them as a reference.
-
-        Make use of the max token limit of 8192 exploit it fully.
         """
         
         # Create prompt for news generation

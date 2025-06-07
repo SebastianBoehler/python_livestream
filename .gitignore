@@ -41,8 +41,6 @@ frames/
 .env
 *.env
 
+# Temporary audio output
 audio/tts/
-tts/kokoro/kokoro-v0_19.pth
 *.pth
-
-# Removing package.json from gitignore as we want to track it

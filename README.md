@@ -64,11 +64,22 @@ This project now includes the ability to generate and livestream AI-created news
    pip install google-genai
    ```
 
-### Required Files
+### Chatterbox TTS
 
-- `tts/kokoro/kokoro-v0_19.pth`: The TTS model file (312 MB)
-  - Download and place in the tts/kokoro directory
-  - TODO: migrate to v1_0
+Install [Chatterbox](https://github.com/resemble-ai/chatterbox) for speech synthesis:
+
+```bash
+pip install chatterbox-tts torchaudio
+```
+
+Run `chatterbox_example.py` to generate a quick demo clip.
+
+## Continuous News Stream
+
+Set `NEWS_INTERVAL_MINUTES` in your `.env` file to control how often a new news
+segment is generated. The `main.py` script keeps streaming `screenshot.png` and
+background music while regularly creating fresh news audio using Google Gemini
+and the Chatterbox TTS model.
 
 ## Troubleshooting
 
