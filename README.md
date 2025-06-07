@@ -70,6 +70,13 @@ This project now includes the ability to generate and livestream AI-created news
   - Download and place in the tts/kokoro directory
   - TODO: migrate to v1_0
 
+## Continuous News Stream
+
+Set `NEWS_INTERVAL_MINUTES` in your `.env` file to control how often a new news
+segment is generated. The `main.py` script keeps streaming `screenshot.png` and
+background music while regularly creating fresh news audio using Google Gemini
+and the Kokoro TTS model.
+
 ## Troubleshooting
 
 - If FFmpeg is not in your PATH, the script will try to find it at common locations
