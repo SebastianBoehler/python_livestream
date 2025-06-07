@@ -32,7 +32,16 @@ def generate_tts_audio(text: str, output_file: str, model: ChatterboxTTS) -> str
     os.makedirs(os.path.dirname(output_file), exist_ok=True)
 
     # Generate audio
-    wav = model.generate(text)
+    try:
+        wav = model.generate(text)
+    except Exception as e:
+        logger.warning(f"TTS generation failed with error: {e}. Falling back to truncated text.")
+        truncated_text = text[:300]
+        try:
+            wav = model.generate(truncated_text)
+        except Exception as e2:
+            logger.error(f"Fallback TTS generation also failed: {e2}")
+            raise
     ta.save(output_file, wav, model.sr)
     
     logger.info(f"TTS audio generated and saved to: {output_file}")
