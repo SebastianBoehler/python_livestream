@@ -28,8 +28,10 @@ def synthesize_long_text(text: str, model: ChatterboxTTS, max_chars: int = MAX_C
         return torch.empty(0)
     return torch.cat(segments, dim=1)
 
-def generate(lines: List[str], output_file: str, model: ChatterboxTTS, max_chars: int = MAX_CHARS) -> str:
+def generate(lines: List[str], output_file: str, max_chars: int = MAX_CHARS) -> str:
     """Generate a single audio file from multiple text segments."""
+    device = get_device()
+    model = ChatterboxTTS.from_pretrained(device=device)
     text = " ".join(lines)
     waveform = synthesize_long_text(text, model, max_chars)
     ta.save(output_file, waveform, model.sr)

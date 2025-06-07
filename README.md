@@ -76,6 +76,8 @@ Run `chatterbox_example.py` to generate a quick demo clip.
 
 The helper module `tts/chatterbox.py` automatically splits long text into
 300 character chunks so Chatterbox can synthesize lengthy news scripts.
+The `generate` function sets up the model on demand, so you only need to
+pass the text lines and an output path.
 
 TTS generation happens in a background thread so the livestream never pauses
 while new audio is prepared.
@@ -89,7 +91,8 @@ Install `huggingface-hub` and use `tts/huggingface.py` to generate speech via th
 pip install huggingface-hub
 ```
 
-The `generate` function mirrors `tts.chatterbox.generate` so you can swap backends easily.
+The `generate` function mirrors `tts.chatterbox.generate` and sets up the
+InferenceClient automatically so you can swap backends easily.
 ## Continuous News Stream
 
 Set `NEWS_INTERVAL_MINUTES` in your `.env` file to control how often a new news

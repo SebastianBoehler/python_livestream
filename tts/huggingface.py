@@ -14,10 +14,10 @@ def get_client() -> InferenceClient:
 def generate(
     lines: List[str],
     output_file: str,
-    client: InferenceClient,
     model: str = "ResembleAI/chatterbox",
 ) -> str:
     """Generate speech using the Hugging Face Inference API."""
+    client = get_client()
     text = " ".join(lines)
     audio_bytes = client.text_to_speech(text, model=model)
     with open(output_file, "wb") as f:
