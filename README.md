@@ -80,6 +80,16 @@ The helper module `tts/chatterbox.py` automatically splits long text into
 TTS generation happens in a background thread so the livestream never pauses
 while new audio is prepared.
 
+
+### Hugging Face TTS
+
+Install `huggingface-hub` and use `tts/huggingface.py` to generate speech via the Falcon AI API:
+
+```bash
+pip install huggingface-hub
+```
+
+The `generate` function mirrors `tts.chatterbox.generate` so you can swap backends easily.
 ## Continuous News Stream
 
 Set `NEWS_INTERVAL_MINUTES` in your `.env` file to control how often a new news
