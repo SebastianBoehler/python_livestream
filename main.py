@@ -159,7 +159,7 @@ def main():
         device = "cuda" if torch.cuda.is_available() else "cpu"
         tts_model = ChatterboxTTS.from_pretrained(device=device)
 
-        interval_minutes = int(os.getenv("NEWS_INTERVAL_MINUTES", "10"))
+        interval_minutes = int(os.getenv("NEWS_INTERVAL_MINUTES", "30"))
 
         news_topic = (
             "Latest news from the last 24h about crypto and blockchain."
@@ -181,7 +181,7 @@ def main():
         future: Future[str] = executor.submit(generate_tts_audio, first_news, audio_path, tts_model)
 
         while True:
-            start_loop = time.time()
+            # start_loop = time.time() was unused
 
             # Wait for the prepared audio
             tts_audio_path = future.result()
