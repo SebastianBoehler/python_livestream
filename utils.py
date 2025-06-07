@@ -9,7 +9,6 @@ import torch
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-
 def get_device() -> str:
     """Return the preferred torch device."""
     if torch.cuda.is_available():

@@ -4,7 +4,6 @@ import torchaudio as ta
 from chatterbox.tts import ChatterboxTTS
 from utils import get_device
 
-
 def main() -> None:
     # Chatterbox TTS
     device = get_device()
