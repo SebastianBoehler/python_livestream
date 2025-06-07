@@ -48,7 +48,7 @@ def generate_news_content(
     topic: str = "latest finance and crypto news and macro economic landscape",
     model_name: str = "gemini-2.0-flash",
     temperature: float = 0.7,
-    max_output_tokens: int = 2048, # max token limit is 8192
+    max_output_tokens: int = 1024, # max token limit is 8192
     top_p: float = 0.95,
     top_k: int = 40
 ) -> str:
