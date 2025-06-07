@@ -3,10 +3,38 @@ import os
 import subprocess
 import tempfile
 import logging
+import torch
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+
+
+def get_device() -> str:
+    """Return the preferred torch device."""
+    if torch.cuda.is_available():
+        return "cuda"
+    if torch.backends.mps.is_available():
+        return "mps"
+    return "cpu"
+
+
+def get_map_location() -> torch.device:
+    """Device for loading torch models."""
+    return torch.device(get_device())
+
+
+# Patch torch.load to use the detected device unless overridden
+torch_load_original = torch.load
+
+
+def patched_torch_load(*args, **kwargs):
+    if "map_location" not in kwargs:
+        kwargs["map_location"] = get_map_location()
+    return torch_load_original(*args, **kwargs)
+
+
+torch.load = patched_torch_load
 
 def get_audio_duration(audio_path, ffmpeg_path='ffmpeg'):
     """

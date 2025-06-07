@@ -2,7 +2,7 @@
 import torch
 import torchaudio as ta
 from chatterbox.tts import ChatterboxTTS
-from tts.chatterbox import get_device
+from utils import get_device
 
 
 def main() -> None:
