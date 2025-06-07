@@ -44,7 +44,7 @@ def synthesize_long_text(text: str, model: ChatterboxTTS, max_chars: int = MAX_C
                 end = space_pos
         segment = text[start:end].strip()
         if segment:
-            wav = model.generate(segment)
+            wav = model.generate(segment, cfg_weight=0.4, exaggeration=0.5) #cfg controls speed
             segments.append(wav)
         start = end
         while start < length and text[start] == " ":
