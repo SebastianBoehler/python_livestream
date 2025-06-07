@@ -6,13 +6,13 @@ from utils import get_device  # re-exported for convenience
 
 MAX_CHARS = 300
 
-def synthesize_long_text(text: str, model: ChatterboxTTS, max_chars: int = MAX_CHARS) -> torch.Tensor:
+def synthesize_long_text(text: str, model: ChatterboxTTS) -> torch.Tensor:
     """Generate audio for text longer than Chatterbox's limit."""
     segments = []
     start = 0
     length = len(text)
     while start < length:
-        end = min(start + max_chars, length)
+        end = min(start + MAX_CHARS, length)
         if end < length:
             space_pos = text.rfind(" ", start, end)
             if space_pos > start:
@@ -28,14 +28,14 @@ def synthesize_long_text(text: str, model: ChatterboxTTS, max_chars: int = MAX_C
         return torch.empty(0)
     return torch.cat(segments, dim=1)
 
-def generate(lines: List[str], output_file: str, max_chars: int = MAX_CHARS) -> str:
+def generate(lines: List[str], output_file: str) -> str:
     """Generate a single audio file from multiple text segments."""
     device = get_device()
     model = ChatterboxTTS.from_pretrained(device=device)
     text = " ".join(lines)
-    waveform = synthesize_long_text(text, model, max_chars)
+    waveform = synthesize_long_text(text, model)
     ta.save(output_file, waveform, model.sr)
     return output_file
 
 
-__all__ = ["generate", "synthesize_long_text", "MAX_CHARS", "get_device"]
+__all__ = ["generate"]

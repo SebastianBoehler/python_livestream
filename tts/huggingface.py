@@ -2,6 +2,9 @@ import os
 from typing import List
 from huggingface_hub import InferenceClient
 
+# models:
+# "canopylabs/orpheus-3b-0.1-ft" orpheus supports many different languages
+# "ResembleAI/chatterbox"
 
 def get_client() -> InferenceClient:
     """Create an InferenceClient using the HF_TOKEN environment variable."""
@@ -14,9 +17,9 @@ def get_client() -> InferenceClient:
 def generate(
     lines: List[str],
     output_file: str,
-    model: str = "ResembleAI/chatterbox",
 ) -> str:
     """Generate speech using the Hugging Face Inference API."""
+    model = "ResembleAI/chatterbox"
     client = get_client()
     text = " ".join(lines)
     audio_bytes = client.text_to_speech(text, model=model)
@@ -25,4 +28,4 @@ def generate(
     return output_file
 
 
-__all__ = ["generate", "get_client"]
+__all__ = ["generate"]

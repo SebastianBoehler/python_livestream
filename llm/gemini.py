@@ -37,13 +37,9 @@ def initialize_gemini_client():
     logger.info("Google Generative AI API initialized successfully")
     return client
 
+# update signature to only take in prompt
 def generate(
-    prompt: str = "latest finance and crypto news and macro economic landscape",
-    model_name: str = "gemini-2.0-flash",
-    temperature: float = 0.7,
-    max_output_tokens: int = 512,
-    top_p: float = 0.95,
-    top_k: int = 40,
+    prompt: str = "latest finance and crypto news and macro economic landscape"
 ) -> str:
     """
     Generate text using Google Gemini with Google Search grounding.
@@ -110,10 +106,8 @@ def generate(
         
         # Configure generation parameters
         generate_config = types.GenerateContentConfig(
-            temperature=temperature,
-            top_p=top_p,
-            top_k=top_k,
-            max_output_tokens=max_output_tokens,
+            temperature=0.7,
+            max_output_tokens=1024,
             system_instruction=system_instruction,
             tools=[google_search_tool],
             # forcing function calling with mode ANY
@@ -129,7 +123,7 @@ def generate(
         
         # Generate content
         response = client.models.generate_content(
-            model=model_name,
+            model="gemini-2.0-flash",
             contents=[full_prompt],
             config=generate_config
         )
