@@ -3,6 +3,7 @@ import os
 import subprocess
 import time
 import logging
+from concurrent.futures import ThreadPoolExecutor, Future
 from dotenv import load_dotenv
 import torch
 from chatterbox.tts import ChatterboxTTS
@@ -20,28 +21,14 @@ def stream_segment(
     stream_key: str,
     image_path: str,
     background_music_path: str,
-    news_text: str,
+    tts_audio_path: str,
     available_time: float,
     ffmpeg_path: str = "ffmpeg",
-    tts_model: ChatterboxTTS = None,
 ) -> float:
-    """Stream a single news segment and filler background music."""
-
-    if tts_model is None:
-        device = "cuda" if torch.cuda.is_available() else "cpu"
-        tts_model = ChatterboxTTS.from_pretrained(device=device)
-
-    tts_dir = os.path.join(os.getcwd(), "audio", "tts")
-    os.makedirs(tts_dir, exist_ok=True)
-    timestamp = int(time.time())
-    tts_audio_path = os.path.join(tts_dir, f"news_{timestamp}.wav")
-
-    start_time = time.time()
-    generate_tts_audio(news_text, tts_audio_path, model=tts_model)
-    tts_generation_time = time.time() - start_time
+    """Stream a pre-generated news segment and filler background music."""
 
     segment_duration = get_audio_duration(tts_audio_path, ffmpeg_path)
-    filler_duration = max(available_time - tts_generation_time - segment_duration, 0)
+    filler_duration = max(available_time - segment_duration, 0)
     total_duration = segment_duration + filler_duration
 
     fps = 30
@@ -183,20 +170,34 @@ def main():
 
         interval_seconds = interval_minutes * 60
 
+        tts_dir = os.path.join(os.getcwd(), "audio", "tts")
+        os.makedirs(tts_dir, exist_ok=True)
+
+        executor = ThreadPoolExecutor(max_workers=1)
+
+        # Pre-generate the first segment
+        first_news = generate_news_content(news_topic)
+        audio_path = os.path.join(tts_dir, f"news_{int(time.time())}.wav")
+        future: Future[str] = executor.submit(generate_tts_audio, first_news, audio_path, tts_model)
+
         while True:
-            loop_start = time.time()
-            news_content = generate_news_content(news_topic)
-            logger.info("Generated news text, starting segment...")
-            pre_segment_time = time.time() - loop_start
-            remaining_time = max(interval_seconds - pre_segment_time, 0)
+            start_loop = time.time()
+
+            # Wait for the prepared audio
+            tts_audio_path = future.result()
+
+            # Kick off generation for the next segment
+            next_news = generate_news_content(news_topic)
+            next_audio = os.path.join(tts_dir, f"news_{int(time.time())}.wav")
+            future = executor.submit(generate_tts_audio, next_news, next_audio, tts_model)
+
             stream_segment(
                 stream_key,
                 image_path,
                 background_music_path,
-                news_content,
-                available_time=remaining_time,
+                tts_audio_path,
+                available_time=interval_seconds,
                 ffmpeg_path=ffmpeg_path,
-                tts_model=tts_model,
             )
 
     except Exception as e:

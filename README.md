@@ -77,6 +77,9 @@ Run `chatterbox_example.py` to generate a quick demo clip.
 The helper module `chatterbox_helper.py` automatically splits long text into
 300 character chunks so Chatterbox can synthesize lengthy news scripts.
 
+TTS generation happens in a background thread so the livestream never pauses
+while new audio is prepared.
+
 ## Continuous News Stream
 
 Set `NEWS_INTERVAL_MINUTES` in your `.env` file to control how often a new news
