@@ -7,7 +7,7 @@ from concurrent.futures import ThreadPoolExecutor, Future
 from dotenv import load_dotenv
 from llm import generate as generate_news_content
 from utils import get_audio_duration
-from tts.chatterbox import generate as generate_tts_audio
+from tts.gemini import generate as generate_tts_audio
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -89,10 +89,7 @@ def stream_segment(
         rtmp_url,
     ]
 
-    safe_command = command.copy()
-    safe_command[-1] = safe_command[-1].replace(stream_key, "STREAM_KEY_HIDDEN")
     logger.info("Starting FFmpeg segment:")
-    logger.info(" ".join(safe_command))
 
     process = subprocess.Popen(
         command,

@@ -128,7 +128,6 @@ def generate(
             config=generate_config
         )
         
-        print(response)
         # Extract and return the generated text
         if response and hasattr(response, 'text'):
             logger.info("News content generated successfully")
