@@ -12,7 +12,8 @@ def generate(lines: List[str], output_file: str) -> str:
     """Generate speech using Google Gemini TTS."""
     client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
 
-    text = " ".join(lines)
+    prefix = "Read aloud in a warm, engaging, friendly tone: \n"
+    text = prefix + " ".join(lines)
     contents = [
         types.Content(
             role="user",
