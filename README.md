@@ -16,9 +16,10 @@ A simple Python script to stream a static image with background music to YouTube
    cd python_livestream
    ```
 
-2. Install the required Python packages:
+2. Install the required Python packages and Playwright browser binaries:
    ```
    pip install -r requirements.txt
+   playwright install
    ```
 
 3. Create a `.env` file with your YouTube stream key:
@@ -33,6 +34,9 @@ A simple Python script to stream a static image with background music to YouTube
 
 5. Place your audio file in the `audio` directory as `song.mp3`
 
+6. To stream a live website instead of a static image, set `STREAM_URL` in your
+   `.env` file to the desired address and run `stream_url.py` (see below).
+
 ## Usage
 
 Run the script:
@@ -44,6 +48,25 @@ The script will:
 1. Load your YouTube stream key from the `.env` file
 2. Stream the static image (`screenshot.png`) with background music (`audio/song.mp3`) to YouTube
 3. Continue streaming until you press Ctrl+C to stop
+
+### Stream a Website
+
+Set `STREAM_URL` in your `.env` file and run:
+
+```
+python stream_url.py
+```
+
+The page at `STREAM_URL` will be captured in a headless browser and streamed
+directly to YouTube. Adjust `STREAM_FPS` in the `.env` file to control the
+capture rate (defaults to 1 frame per second).
+
+### Website Stream with News Updates
+
+Set `NEWS_INTERVAL_MINUTES` and `GEMINI_API_KEY` in your `.env` file to mix
+scheduled AI-generated news segments into the website stream. `stream_url.py`
+will periodically generate a news script, synthesize it using Chatterbox TTS
+and play it over the captured page.
 
 ## News Livestreaming with Gemini AI
 
