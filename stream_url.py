@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 from playwright.async_api import async_playwright
 
 from llm import generate as generate_news_content
-from tts.chatterbox import generate as generate_tts_audio
+from tts.gemini import generate as generate_tts_audio
 from utils import get_audio_duration
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -117,7 +117,7 @@ async def stream_segment(
 
 async def run_livestream() -> None:
     """Run continuous livestream of a website with scheduled news segments."""
-    load_dotenv()
+    load_dotenv(override=True)
     stream_key = os.getenv("YOUTUBE_STREAM_KEY")
     url = os.getenv("STREAM_URL")
     fps = int(os.getenv("STREAM_FPS", "1"))
@@ -162,6 +162,7 @@ async def run_livestream() -> None:
     async with async_playwright() as playwright:
         browser = await playwright.chromium.launch()
         page = await browser.new_page(viewport={"width": 1920, "height": 1080})
+        print(f"Streaming from {url}")
         await page.goto(url)
 
         try:

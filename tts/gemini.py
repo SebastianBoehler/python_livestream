@@ -1,72 +1,56 @@
-# from ai studio, needs proper alignment with generate method etc
-import base64
+"""Google Gemini based TTS helper."""
+
 import mimetypes
 import os
-import re
 import struct
+from typing import List
+
 from google import genai
 from google.genai import types
 
+def generate(lines: List[str], output_file: str) -> str:
+    """Generate speech using Google Gemini TTS."""
+    client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
 
-def save_binary_file(file_name, data):
-    f = open(file_name, "wb")
-    f.write(data)
-    f.close()
-    print(f"File saved to to: {file_name}")
-
-
-def generate():
-    client = genai.Client(
-        api_key=os.environ.get("GEMINI_API_KEY"),
-    )
-
-    model = "gemini-2.5-flash-preview-tts"
+    text = " ".join(lines)
     contents = [
         types.Content(
             role="user",
-            parts=[
-                types.Part.from_text(text="""Hello I am your news anchor and"""),
-            ],
-        ),
+            parts=[types.Part.from_text(text=text)],
+        )
     ]
-    generate_content_config = types.GenerateContentConfig(
-        temperature=1,
-        response_modalities=[
-            "audio",
-        ],
+    generate_config = types.GenerateContentConfig(
+        temperature=1.0,
+        response_modalities=["audio"],
         speech_config=types.SpeechConfig(
             voice_config=types.VoiceConfig(
-                prebuilt_voice_config=types.PrebuiltVoiceConfig(
-                    voice_name="Charon"
-                )
+                prebuilt_voice_config=types.PrebuiltVoiceConfig(voice_name="Charon")
             )
         ),
     )
 
-    file_index = 0
+    audio_data = bytearray()
+    mime_type = "audio/wav"
     for chunk in client.models.generate_content_stream(
-        model=model,
+        model="gemini-2.5-flash-preview-tts",
         contents=contents,
-        config=generate_content_config,
+        config=generate_config,
     ):
         if (
-            chunk.candidates is None
-            or chunk.candidates[0].content is None
-            or chunk.candidates[0].content.parts is None
+            chunk.candidates
+            and chunk.candidates[0].content
+            and chunk.candidates[0].content.parts
         ):
-            continue
-        if chunk.candidates[0].content.parts[0].inline_data and chunk.candidates[0].content.parts[0].inline_data.data:
-            file_name = f"ENTER_FILE_NAME_{file_index}"
-            file_index += 1
-            inline_data = chunk.candidates[0].content.parts[0].inline_data
-            data_buffer = inline_data.data
-            file_extension = mimetypes.guess_extension(inline_data.mime_type)
-            if file_extension is None:
-                file_extension = ".wav"
-                data_buffer = convert_to_wav(inline_data.data, inline_data.mime_type)
-            save_binary_file(f"{file_name}{file_extension}", data_buffer)
-        else:
-            print(chunk.text)
+            part = chunk.candidates[0].content.parts[0]
+            if part.inline_data and part.inline_data.data:
+                mime_type = part.inline_data.mime_type or mime_type
+                audio_data.extend(part.inline_data.data)
+
+    if mime_type != "audio/wav":
+        audio_data = convert_to_wav(bytes(audio_data), mime_type)
+    with open(output_file, "wb") as f:
+        f.write(audio_data)
+    return output_file
 
 def convert_to_wav(audio_data: bytes, mime_type: str) -> bytes:
     """Generates a WAV file header for the given audio data and parameters.
@@ -144,4 +128,6 @@ def parse_audio_mime_type(mime_type: str) -> dict[str, int | None]:
 
 
 if __name__ == "__main__":
-    generate()
+    generate(["Hello from Gemini."], "example.wav")
+
+__all__ = ["generate"]
