@@ -54,6 +54,7 @@ python stream_url.py
 - FFmpeg must be installed and available in your PATH.
 - The `package-lock.json` file, if present, may be outdated because many of our projects use [bun](https://bun.sh) for package management.
 - Replace `screenshot.png` and `audio/song.mp3` with your own assets.
+- The streaming scripts default to a video bitrate of **6800 Kbps**, the rate YouTube recommends for 1080p streams.
 
 ## Contributing
 Please run the following before submitting a pull request:
