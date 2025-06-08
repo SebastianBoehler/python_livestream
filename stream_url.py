@@ -162,7 +162,13 @@ async def run_livestream() -> None:
     async with async_playwright() as playwright:
         browser = await playwright.chromium.launch()
         page = await browser.new_page(viewport={"width": 1920, "height": 1080})
-        print(f"Straming from {url}")
+        await page.goto(url, wait_until="networkidle")
+        if page.url.rstrip("/") != url.rstrip("/"):
+            logger.warning(
+                "Navigation ended at %s, retrying to load %s", page.url, url
+            )
+            await page.goto(url, wait_until="networkidle")
+        logger.info("Streaming from %s", page.url)
         await page.goto(url)
 
         try:
