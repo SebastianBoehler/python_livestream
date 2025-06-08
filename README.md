@@ -13,6 +13,7 @@ Automate YouTube livestreams with scheduled text-to-speech overlays and backgrou
 - **Resemble AI Chatterbox** (`tts/chatterbox.py`)
 - **Hugging Face Inference API** (`tts/huggingface.py`)
 - **Sesame CSM 1B** (`tts/sesame_csm.py`)
+- **ElevenLabs API** (`tts/elevenlabs.py`)
 
 ## Supported Language Models
 - **Google Gemini** (`llm/gemini.py`)
@@ -34,6 +35,7 @@ YOUTUBE_STREAM_KEY=<your-youtube-key>
 GEMINI_API_KEY=<your-gemini-key>
 HF_TOKEN=<huggingface-token>      # required for Hugging Face TTS
 XAI_API_KEY=<grok-token>          # required for Grok LLM
+ELEVENLABS_API_KEY=<11labs-key>   # required for ElevenLabs TTS
 STREAM_URL=https://example.com    # optional website to stream
 NEWS_INTERVAL_MINUTES=30          # minutes between news updates
 STREAM_FPS=1                      # capture rate for website streaming
