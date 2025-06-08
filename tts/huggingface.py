@@ -11,7 +11,7 @@ def get_client() -> InferenceClient:
     api_key = os.getenv("HF_TOKEN")
     if not api_key:
         raise ValueError("HF_TOKEN not found in environment variables")
-    return InferenceClient(provider="fal-ai", api_key=api_key)
+    return InferenceClient(provider="auto", api_key=api_key)
 
 
 def generate(
