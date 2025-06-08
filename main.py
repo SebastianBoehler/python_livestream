@@ -14,7 +14,6 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 
-
 def stream_segment(
     stream_key: str,
     image_path: str,

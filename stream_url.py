@@ -117,7 +117,7 @@ async def stream_segment(
 
 async def run_livestream() -> None:
     """Run continuous livestream of a website with scheduled news segments."""
-    load_dotenv()
+    load_dotenv(override=True)
     stream_key = os.getenv("YOUTUBE_STREAM_KEY")
     url = os.getenv("STREAM_URL")
     fps = int(os.getenv("STREAM_FPS", "1"))
@@ -162,13 +162,7 @@ async def run_livestream() -> None:
     async with async_playwright() as playwright:
         browser = await playwright.chromium.launch()
         page = await browser.new_page(viewport={"width": 1920, "height": 1080})
-        await page.goto(url, wait_until="networkidle")
-        if page.url.rstrip("/") != url.rstrip("/"):
-            logger.warning(
-                "Navigation ended at %s, retrying to load %s", page.url, url
-            )
-            await page.goto(url, wait_until="networkidle")
-        logger.info("Streaming from %s", page.url)
+        print(f"Streaming from {url}")
         await page.goto(url)
 
         try:
