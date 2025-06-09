@@ -62,6 +62,21 @@ To livestream a website with scheduled news segments:
 python stream_url.py
 ```
 
+### Run with Docker
+
+Build the Docker image and start streaming:
+
+```bash
+docker build -t python-livestream .
+docker run --env-file .env python-livestream
+```
+
+To stream a website instead of an image:
+
+```bash
+docker run --env-file .env python-livestream python stream_url.py
+```
+
 ## Additional Notes
 
 - FFmpeg must be installed and available in your PATH.
