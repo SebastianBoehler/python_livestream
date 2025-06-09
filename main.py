@@ -28,7 +28,7 @@ def stream_segment(
     filler_duration = max(available_time - segment_duration, 0)
     total_duration = segment_duration + filler_duration
 
-    fps = 30
+    fps = 25
     video_bitrate = "6800k"  # YouTube recommends ~6.8 Mbps for 1080p
     buffer_size = "13600k"  # 2x video bitrate for stability
     rtmp_url = f"rtmp://a.rtmp.youtube.com/live2/{stream_key}"

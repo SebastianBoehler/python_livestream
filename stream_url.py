@@ -20,7 +20,7 @@ async def _capture_frames(page, process: subprocess.Popen, fps: int) -> None:
     """Capture screenshots and write them to FFmpeg's stdin."""
     frame_delay = 1 / fps
     while process.poll() is None:
-        screenshot = await page.screenshot(type="png")
+        screenshot = await page.screenshot(type="jpeg", quality=80)
         try:
             if process.stdin:
                 process.stdin.write(screenshot)
@@ -168,7 +168,10 @@ async def run_livestream() -> None:
     future = loop.run_in_executor(executor, generate_tts_audio, [first_news], audio_path)
 
     async with async_playwright() as playwright:
-        browser = await playwright.chromium.launch()
+        browser = await playwright.chromium.launch(
+            headless=True,
+            args=["--disable-gpu", "--no-sandbox", "--disable-dev-shm-usage"],
+        )
         page = await browser.new_page(viewport={"width": 1920, "height": 1080})
         print(f"Streaming from {url}")
         await page.goto(url)
