@@ -10,7 +10,7 @@ from playwright.async_api import async_playwright
 
 from llm import generate as generate_news_content
 from tts.gemini import generate as generate_tts_audio
-from utils import get_audio_duration
+from utils import get_audio_duration, get_rtmp_url
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -38,13 +38,14 @@ async def stream_segment(
     available_time: float,
     fps: int,
     ffmpeg_path: str = "ffmpeg",
+    platform: str = "youtube",
 ) -> float:
     """Stream a single news segment with the website video feed."""
     segment_duration = get_audio_duration(tts_audio_path, ffmpeg_path)
     filler_duration = max(available_time - segment_duration, 0)
     total_duration = segment_duration + filler_duration
 
-    rtmp_url = f"rtmp://a.rtmp.youtube.com/live2/{stream_key}"
+    rtmp_url = get_rtmp_url(stream_key, platform)
 
     command = [
         ffmpeg_path,
@@ -126,13 +127,19 @@ async def stream_segment(
 async def run_livestream() -> None:
     """Run continuous livestream of a website with scheduled news segments."""
     load_dotenv(override=True)
-    stream_key = os.getenv("YOUTUBE_STREAM_KEY")
+    platform = os.getenv("STREAM_PLATFORM", "youtube").lower()
+    if platform == "twitch":
+        stream_key = os.getenv("TWITCH_STREAM_KEY")
+    else:
+        stream_key = os.getenv("YOUTUBE_STREAM_KEY")
+
+    logger.info("Streaming platform: %s", platform)
     url = os.getenv("STREAM_URL")
     fps = int(os.getenv("STREAM_FPS", "1"))
     interval_minutes = int(os.getenv("NEWS_INTERVAL_MINUTES", "30"))
 
     if not stream_key:
-        logger.error("YOUTUBE_STREAM_KEY not provided")
+        logger.error("No stream key provided for platform %s", platform)
         return
     if not url:
         logger.error("STREAM_URL not provided")
@@ -188,6 +195,7 @@ async def run_livestream() -> None:
                     available_time=interval_seconds,
                     fps=fps,
                     ffmpeg_path=ffmpeg_path,
+                    platform=platform,
                 )
         except KeyboardInterrupt:
             logger.info("Livestream stopped by user")
