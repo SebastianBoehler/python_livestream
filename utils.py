@@ -79,3 +79,13 @@ def get_audio_duration(audio_path, ffmpeg_path='ffmpeg'):
     except Exception as e:
         logger.error(f"Error getting audio duration: {str(e)}")
         raise
+
+
+def get_rtmp_url(stream_key: str, platform: str = "youtube") -> str:
+    """Return the full RTMP URL for the given streaming platform."""
+    platform = platform.lower()
+    if platform == "twitch":
+        base_url = os.getenv("TWITCH_RTMP_URL", "rtmp://live.twitch.tv/app")
+    else:
+        base_url = os.getenv("YOUTUBE_RTMP_URL", "rtmp://a.rtmp.youtube.com/live2")
+    return f"{base_url}/{stream_key}"

@@ -6,7 +6,7 @@ import logging
 from concurrent.futures import ThreadPoolExecutor, Future
 from dotenv import load_dotenv
 from llm import generate as generate_news_content
-from utils import get_audio_duration
+from utils import get_audio_duration, get_rtmp_url
 from tts.gemini import generate as generate_tts_audio
 
 # Configure logging
@@ -21,6 +21,7 @@ def stream_segment(
     tts_audio_path: str,
     available_time: float,
     ffmpeg_path: str = "ffmpeg",
+    platform: str = "youtube",
 ) -> float:
     """Stream a pre-generated news segment and filler background music."""
 
@@ -31,7 +32,7 @@ def stream_segment(
     fps = 30
     video_bitrate = "6800k"  # YouTube recommends ~6.8 Mbps for 1080p
     buffer_size = "13600k"  # 2x video bitrate for stability
-    rtmp_url = f"rtmp://a.rtmp.youtube.com/live2/{stream_key}"
+    rtmp_url = get_rtmp_url(stream_key, platform)
 
     command = [
         ffmpeg_path,
@@ -126,15 +127,20 @@ def main():
     try:
         load_dotenv(override=True)
         logger.info(f"Loaded GEMINI_API_KEY: {os.getenv('GEMINI_API_KEY')}")
-        logger.info(f"Loaded YOUTUBE_STREAM_KEY: {os.getenv('YOUTUBE_STREAM_KEY')}\n")
+        platform = os.getenv("STREAM_PLATFORM", "youtube").lower()
+        if platform == "twitch":
+            stream_key = os.getenv("TWITCH_STREAM_KEY")
+        else:
+            stream_key = os.getenv("YOUTUBE_STREAM_KEY")
 
-        stream_key = os.getenv("YOUTUBE_STREAM_KEY")
+        logger.info("Streaming platform: %s", platform)
+
         if not stream_key:
-            logger.error("YOUTUBE_STREAM_KEY not found in .env file")
+            logger.error("No stream key found for platform %s", platform)
             return
 
         if len(stream_key) < 10:
-            logger.error("Provided YouTube stream key seems invalid")
+            logger.error("Provided stream key seems invalid")
             return
 
         image_path = os.path.join(os.getcwd(), "screenshot.png")
@@ -189,6 +195,7 @@ def main():
                 tts_audio_path,
                 available_time=interval_seconds,
                 ffmpeg_path=ffmpeg_path,
+                platform=platform,
             )
 
     except Exception as e:
