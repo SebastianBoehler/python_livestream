@@ -5,9 +5,14 @@ import time
 import logging
 from concurrent.futures import ThreadPoolExecutor, Future
 from dotenv import load_dotenv
-from llm import generate as generate_news_content
+from llm import generate as generate_news_content, generate_title
 from utils import get_audio_duration
 from tts.gemini import generate as generate_tts_audio
+from youtube import (
+    update_stream_title,
+    get_active_broadcast_id,
+    ensure_authenticated,
+)
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -127,6 +132,7 @@ def main():
         load_dotenv(override=True)
         logger.info(f"Loaded GEMINI_API_KEY: {os.getenv('GEMINI_API_KEY')}")
         logger.info(f"Loaded YOUTUBE_STREAM_KEY: {os.getenv('YOUTUBE_STREAM_KEY')}\n")
+        ensure_authenticated()
 
         stream_key = os.getenv("YOUTUBE_STREAM_KEY")
         if not stream_key:
@@ -168,6 +174,18 @@ def main():
 
         # Pre-generate the first segment
         first_news = generate_news_content(news_topic)
+        title = generate_title(first_news)
+        broadcast_id = os.getenv("YOUTUBE_BROADCAST_ID")
+        if not broadcast_id:
+            try:
+                broadcast_id = get_active_broadcast_id()
+            except Exception as e:  # pragma: no cover - depends on OAuth setup
+                logger.error(f"Failed to fetch active broadcast ID: {e}")
+        if broadcast_id:
+            try:
+                update_stream_title(broadcast_id, title)
+            except Exception as e:
+                logger.error(f"Failed to update stream title: {e}")
         audio_path = os.path.join(tts_dir, f"news_{int(time.time())}.wav")
         future: Future[str] = executor.submit(generate_tts_audio, [first_news], audio_path)
 
