@@ -46,7 +46,16 @@ ELEVENLABS_API_KEY=<11labs-key>   # required for ElevenLabs TTS
 STREAM_URL=https://example.com    # optional website to stream
 NEWS_INTERVAL_MINUTES=30          # minutes between news updates
 STREAM_FPS=1                      # capture rate for website streaming
+YOUTUBE_CLIENT_ID=<oauth-client-id>        # OAuth client for title updates
+YOUTUBE_CLIENT_SECRET=<oauth-client-secret>
+YOUTUBE_REFRESH_TOKEN=<oauth-refresh-token> # optional if using saved token file
+YOUTUBE_ACCESS_TOKEN=<optional-access-token>
+YOUTUBE_TOKEN_FILE=youtube_token.json       # where OAuth credentials are stored
+YOUTUBE_BROADCAST_ID=<optional-broadcast-id>
 ```
+
+On the first run, the script opens an OAuth URL in your browser and stores the
+resulting credentials in `YOUTUBE_TOKEN_FILE` for reuse.
 
 ### 3. Run a livestream
 

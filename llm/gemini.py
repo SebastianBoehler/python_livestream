@@ -152,3 +152,32 @@ def generate(
     except Exception as e:
         logger.error(f"Error generating news content: {str(e)}")
         raise
+
+
+def generate_title(text: str) -> str:
+    """Generate a short livestream title summarizing ``text``."""
+    try:
+        client = initialize_gemini_client()
+        prompt = (
+            "Create a concise YouTube livestream title under 8 words summarizing the following text: "
+            + text
+        )
+        config = types.GenerateContentConfig(
+            temperature=0.5,
+            max_output_tokens=16,
+            response_mime_type="text/plain",
+        )
+        response = client.models.generate_content(
+            model="gemini-pro",
+            contents=[prompt],
+            config=config,
+        )
+        if response and hasattr(response, "text"):
+            return response.text.strip().replace("\n", " ")
+        raise ValueError("Empty response when generating title")
+    except Exception as e:  # pragma: no cover - best effort
+        logger.error(f"Error generating stream title: {str(e)}")
+        raise
+
+
+__all__ = ["generate", "generate_title"]
