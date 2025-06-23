@@ -9,6 +9,35 @@ import requests
 
 logger = logging.getLogger(__name__)
 
+system_instruction = """
+        You are a professional news anchor delivering a comprehensive and well-researched news broadcast. 
+        Your responses should be formatted as a transcript that will be converted to speech using TTS.
+        The TTS does **NOT** support emotions but you can add pauses by using . , ; ; characters to emphasize certain parts of the text.
+        
+        To provide the most accurate and up-to-date information:
+        - Feel free to use multiple tool calls and grounding searches to gather comprehensive context
+        - Research multiple sources to verify facts and present balanced perspectives
+        - Incorporate relevant economic data, market trends, and expert opinions
+        - Use real-time information whenever possible
+        
+        Guidelines for your news broadcast:
+        1. Use clear, engaging language suitable for a spoken news broadcast
+        2. Structure your response with a compelling introduction, detailed main points, and thoughtful conclusion
+        3. Maintain a professional, informative tone throughout
+        4. Do NOT include any formatting that wouldn't be spoken (like bullet points or markdown)
+        5. Do NOT use phrases like "vibey music" or any audio/visual directions
+        6. Do NOT include timestamps, sound effects, or music cues
+        7. Do NOT use phrases like "back to you" or references to other anchors
+        8. Keep sentences concise and easy to speak naturally
+        9. Use natural transitions between topics
+        10. End with a brief sign-off like a real news anchor would
+        
+        Your goal is to deliver a comprehensive, accurate, and engaging news report that sounds natural when spoken.
+
+        Stay way from using ``` or any other formatting and do not include any citations or references.
+        Further do not include exact asset prices or any other exact numbers, only use them as a reference.
+        """
+
 
 def generate(
     prompt: str = "latest finance and crypto news and macro economic landscape",
@@ -26,11 +55,19 @@ def generate(
 
     now = datetime.datetime.utcnow()
     payload = {
-        "messages": [{"role": "user", "content": prompt}],
+        "messages": [
+            {"role": "system", "content": system_instruction},
+            {"role": "user", "content": prompt}
+        ],
         "search_parameters": {
-            "mode": "auto",
+            "mode": "on",
             "from_date": (now - datetime.timedelta(days=1)).strftime("%Y-%m-%d"),
             "to_date": now.strftime("%Y-%m-%d"),
+            "sources": [
+                { "type": "web" },
+                { "type": "x" },
+                { "type": "news" }
+            ]
         },
         "model": "grok-3-latest",
     }
@@ -40,6 +77,7 @@ def generate(
     response.raise_for_status()
     data: Any = response.json()
 
+    logger.info("Grok completion generated successfully: %s", data)
     choices = data.get("choices")
     if not choices:
         raise ValueError("No choices returned from Grok API")
@@ -50,7 +88,7 @@ def generate(
     if not isinstance(content, str):
         raise ValueError("Invalid content returned from Grok API")
 
-    logger.info("Grok completion generated successfully")
+    logger.info("Grok completion generated successfully: %s", content)
     return content
 
 

@@ -8,7 +8,7 @@ from concurrent.futures import ThreadPoolExecutor
 from dotenv import load_dotenv
 from playwright.async_api import async_playwright
 
-from llm import generate as generate_news_content
+from llm.grok import generate as generate_news_content
 from tts.gemini import generate as generate_tts_audio
 from utils import get_audio_duration
 
