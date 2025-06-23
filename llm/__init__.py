@@ -1,1 +1,2 @@
-from .gemini import generate
+from .gemini import generate, generate_title
+
