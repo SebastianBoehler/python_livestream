@@ -62,6 +62,14 @@ To livestream a website with scheduled news segments:
 python stream_url.py
 ```
 
+### 4. Generate a news video
+
+Add a news voiceover to an existing video:
+
+```bash
+python create_video.py path/to/video.mp4 --output news_video.mp4
+```
+
 ### Run with Docker
 
 Build the Docker image and start streaming:

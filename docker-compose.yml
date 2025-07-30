@@ -1,0 +1,7 @@
+services:
+  stream:
+    build: .
+    image: python_livestream
+    env_file:
+      - .env
+    command: python stream_url.py
