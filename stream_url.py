@@ -40,7 +40,21 @@ async def stream_segment(
     ffmpeg_path: str = "ffmpeg",
 ) -> float:
     """Stream a single news segment with the website video feed."""
-    segment_duration = get_audio_duration(tts_audio_path, ffmpeg_path)
+    try:
+        segment_duration = get_audio_duration(tts_audio_path, ffmpeg_path)
+    except Exception as e:
+        # If the TTS file is corrupted or unreadable, log the error, clean up the file, and
+        # fall back to streaming only the background music for the full available_time.
+        logger.error("Falling back to background-music-only segment due to audio duration error: %s", e)
+        if os.path.exists(tts_audio_path):
+            try:
+                os.remove(tts_audio_path)
+                logger.info("Removed faulty TTS file: %s", tts_audio_path)
+            except OSError as rm_error:
+                logger.warning("Could not remove faulty TTS file %s: %s", tts_audio_path, rm_error)
+        # We cannot include the faulty TTS file in the FFmpeg command, so stream only background music.
+        tts_audio_path = background_music_path  # reuse background music for the single input
+        segment_duration = available_time  # stream the full interval with background music only
     filler_duration = max(available_time - segment_duration, 0)
     total_duration = segment_duration + filler_duration
 
@@ -115,9 +129,13 @@ async def stream_segment(
         process.stdin.close()
     await capture_task
 
-    if os.path.exists(tts_audio_path):
-        os.remove(tts_audio_path)
-        logger.info("Removed temporary file: %s", tts_audio_path)
+    # Clean up only if this was a generated TTS file (i.e. lives inside the tts directory)
+    if os.path.dirname(tts_audio_path).endswith(os.path.join("audio", "tts")) and os.path.exists(tts_audio_path):
+        try:
+            os.remove(tts_audio_path)
+            logger.info("Removed temporary TTS file: %s", tts_audio_path)
+        except OSError as rm_err:
+            logger.warning("Could not remove TTS file %s: %s", tts_audio_path, rm_err)
 
     logger.info("Segment finished")
     return total_duration
