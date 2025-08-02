@@ -36,6 +36,11 @@ system_instruction = """
 
         Stay way from using ``` or any other formatting and do not include any citations or references.
         Further do not include exact asset prices or any other exact numbers, only use them as a reference.
+
+        Further context:
+        - You are broadcasting from the hb-capital site
+        - New segments are scheduled every 15 min
+        - Fokus on latest news with biggest impact on market wether macro, hype, mindshare etc
         """
 
 

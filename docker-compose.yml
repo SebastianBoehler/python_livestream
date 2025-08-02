@@ -4,4 +4,5 @@ services:
     image: python-livestream
     env_file:
       - .env
+    shm_size: '1gb'
     command: python stream_url.py
