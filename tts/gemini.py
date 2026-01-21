@@ -5,14 +5,34 @@ import os
 import struct
 from typing import List
 
+from dotenv import load_dotenv
 from google import genai
 from google.genai import types
 
-def generate(lines: List[str], output_file: str) -> str:
-    """Generate speech using Google Gemini TTS."""
-    client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
+# Load environment variables
+load_dotenv()
 
-    prefix = "Read aloud in a warm, engaging, friendly tone: \n"
+def generate(lines: List[str], output_file: str) -> str:
+    """Generate speech using Google Gemini TTS with default voice."""
+    return generate_with_voice(lines, output_file, "Charon")
+
+def generate_with_voice(lines: List[str], output_file: str, voice_name: str = "Charon") -> str:
+    """Generate speech using Google Gemini TTS with specified voice.
+    
+    Available voices:
+    - Charon: Male voice
+    - Puck: Female voice
+    - Kore: Female voice
+    - Fenrir: Male voice
+    - Aoede: Female voice
+    """
+    api_key = os.environ.get("GEMINI_API_KEY")
+    if not api_key:
+        raise ValueError("GEMINI_API_KEY not found in environment variables")
+    
+    client = genai.Client(api_key=api_key)
+
+    prefix = "Please read aloud the following in a podcast interview style: \n"
     text = prefix + " ".join(lines)
     contents = [
         types.Content(
@@ -25,7 +45,7 @@ def generate(lines: List[str], output_file: str) -> str:
         response_modalities=["audio"],
         speech_config=types.SpeechConfig(
             voice_config=types.VoiceConfig(
-                prebuilt_voice_config=types.PrebuiltVoiceConfig(voice_name="Charon")
+                prebuilt_voice_config=types.PrebuiltVoiceConfig(voice_name=voice_name)
             )
         ),
     )
@@ -131,4 +151,4 @@ def parse_audio_mime_type(mime_type: str) -> dict[str, int | None]:
 if __name__ == "__main__":
     generate(["Hello from Gemini."], "example.wav")
 
-__all__ = ["generate"]
+__all__ = ["generate", "generate_with_voice"]
