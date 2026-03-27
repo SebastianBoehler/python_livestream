@@ -47,3 +47,4 @@ memory/*.json
 memory/*.jsonl
 memory/*.md
 *.pth
+.coverage
