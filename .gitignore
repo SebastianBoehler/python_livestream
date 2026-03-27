@@ -43,4 +43,7 @@ frames/
 
 # Temporary audio output
 audio/tts/
+memory/*.json
+memory/*.jsonl
+memory/*.md
 *.pth

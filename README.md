@@ -5,7 +5,9 @@ Automate YouTube livestreams with scheduled text-to-speech overlays and backgrou
 ## Features
 
 - Stream static images or websites directly to YouTube using FFmpeg
-- Schedule news segments with TTS audio overlays
+- Buffer prepared news segments ahead of playout
+- Persist recent coverage memory to avoid repeating the same angles
+- Route news generation through xAI, Gemini, or OpenRouter
 - Loop background music so the stream never goes silent
 - Easily switch between several TTS models and language models
 
@@ -40,12 +42,16 @@ Create a `.env` file (see `.env.example`) and set at least:
 ```dotenv
 YOUTUBE_STREAM_KEY=<your-youtube-key>
 GEMINI_API_KEY=<your-gemini-key>
+OPENROUTER_API_KEY=<your-openrouter-key>
 HF_TOKEN=<huggingface-token>      # required for Hugging Face TTS
 XAI_API_KEY=<grok-token>          # required for Grok LLM
 ELEVENLABS_API_KEY=<11labs-key>   # required for ElevenLabs TTS
 STREAM_URL=https://example.com    # optional website to stream
-NEWS_INTERVAL_MINUTES=30          # minutes between news updates
-STREAM_FPS=1                      # capture rate for website streaming
+NEWS_SEGMENT_SECONDS=180          # target bulletin duration
+SEGMENT_BUFFER_SIZE=3             # how many ready segments to keep queued
+TTS_PARALLELISM=3                 # concurrent TTS chunk synthesis workers
+STREAM_FPS=12                     # stable Playwright capture rate
+NEWS_LLM_PROVIDER_ORDER=xai       # or openrouter, gemini, xai,openrouter
 ```
 
 ### 3. Run a livestream
@@ -61,6 +67,12 @@ To livestream a website with scheduled news segments:
 ```bash
 python stream_url.py
 ```
+
+The stream runtime now keeps a memory layer in `memory/`:
+
+- `session_index.jsonl`: append-only aired segment history
+- `topic_state.json`: lightweight repeated-topic tracking
+- `rolling_context.md`: human-readable coverage memory for prompts and review
 
 ### 4. Generate a news video
 
@@ -89,7 +101,9 @@ docker run --env-file .env python-livestream python stream_url.py
 
 - FFmpeg must be installed and available in your PATH.
 - Replace `screenshot.png` and `audio/song.mp3` with your own assets.
-- The streaming scripts default to a video bitrate of **6800 Kbps**, the rate YouTube recommends for 1080p streams.
+- The buffered pipeline works best with short segments such as `120-240` seconds.
+- The current Playwright screenshot backend is stable around `12 FPS`. Reaching `25 FPS` likely requires a different capture backend.
+- See [docs/architecture.md](/Users/sebastianboehler/Documents/GitHub/python_livestream/docs/architecture.md) for the memory, buffering, ADK, and OpenRouter layout.
 
 ## Contributing
 
