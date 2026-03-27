@@ -3,6 +3,7 @@
 import datetime
 import logging
 import os
+import time
 from typing import Any
 
 import requests
@@ -47,53 +48,85 @@ system_instruction = """
 def generate(
     prompt: str = "latest finance and crypto news and macro economic landscape",
 ) -> str:
-    """Generate a response using the xAI Grok API."""
+    """Generate a response using the xAI Responses API with built-in search tools."""
     api_key = os.getenv("XAI_API_KEY")
     if not api_key:
         raise ValueError("XAI_API_KEY not found in environment variables")
 
-    url = "https://api.x.ai/v1/chat/completions"
+    url = "https://api.x.ai/v1/responses"
     headers = {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {api_key}",
     }
 
-    now = datetime.datetime.utcnow()
+    now = datetime.datetime.now(datetime.UTC)
+    model_name = os.getenv("XAI_MODEL", "grok-4.20-reasoning")
     payload = {
-        "messages": [
-            {"role": "system", "content": system_instruction},
-            {"role": "user", "content": prompt}
+        "instructions": system_instruction,
+        "input": [
+            {
+                "role": "user",
+                "content": (
+                    f"{prompt}\n\n"
+                    f"Current UTC time: {now.isoformat()}. "
+                    "Focus on developments from the last 24 hours."
+                ),
+            }
         ],
-        "search_parameters": {
-            "mode": "on",
-            "from_date": (now - datetime.timedelta(days=1)).strftime("%Y-%m-%d"),
-            "to_date": now.strftime("%Y-%m-%d"),
-            "sources": [
-                { "type": "web" },
-                { "type": "x" },
-                { "type": "news" }
-            ]
-        },
-        "model": "grok-3-latest",
+        "model": model_name,
+        "temperature": 0.4,
+        "tools": [
+            {"type": "web_search"},
+            {"type": "x_search"},
+        ],
     }
 
-    logger.info("Requesting Grok completion")
-    response = requests.post(url, headers=headers, json=payload, timeout=60)
-    response.raise_for_status()
+    max_attempts = int(os.getenv("XAI_MAX_RETRIES", "4"))
+    response: requests.Response | None = None
+    for attempt in range(1, max_attempts + 1):
+        logger.info("Requesting Grok response with model %s (attempt %s/%s)", model_name, attempt, max_attempts)
+        response = requests.post(url, headers=headers, json=payload, timeout=60)
+        if response.ok:
+            break
+        status_code = response.status_code
+        if status_code < 500 and status_code != 429:
+            response.raise_for_status()
+        logger.warning(
+            "Transient xAI error %s on attempt %s/%s: %s",
+            status_code,
+            attempt,
+            max_attempts,
+            response.text[:300],
+        )
+        if attempt == max_attempts:
+            response.raise_for_status()
+        time.sleep(min(2 ** (attempt - 1), 8))
+
+    if response is None:
+        raise RuntimeError("xAI request was not attempted")
     data: Any = response.json()
 
-    logger.info("Grok completion generated successfully: %s", data)
-    choices = data.get("choices")
-    if not choices:
-        raise ValueError("No choices returned from Grok API")
-    message = choices[0].get("message")
-    if not message:
-        raise ValueError("No message in Grok API response")
-    content = message.get("content")
-    if not isinstance(content, str):
-        raise ValueError("Invalid content returned from Grok API")
+    output_items = data.get("output")
+    if not isinstance(output_items, list):
+        raise ValueError("No output returned from xAI Responses API")
 
-    logger.info("Grok completion generated successfully: %s", content)
+    text_chunks: list[str] = []
+    for item in output_items:
+        if not isinstance(item, dict) or item.get("type") != "message":
+            continue
+        for content_part in item.get("content", []):
+            if (
+                isinstance(content_part, dict)
+                and content_part.get("type") == "output_text"
+                and isinstance(content_part.get("text"), str)
+            ):
+                text_chunks.append(content_part["text"])
+
+    content = "\n".join(chunk.strip() for chunk in text_chunks if chunk.strip())
+    if not content:
+        raise ValueError("No text content returned from xAI Responses API")
+
+    logger.info("Grok response generated successfully")
     return content
 
 
