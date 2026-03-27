@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 from playwright.async_api import async_playwright
 
 from broadcast.capture import browser_launch_kwargs, load_capture_backend_config
+from broadcast.intermission import prepare_intermission_segment
 from broadcast.memory import BroadcastMemoryStore
 from broadcast.pipeline import prepare_segment
 from broadcast.streaming import stream_segment
@@ -30,6 +31,13 @@ def _news_prompt() -> str:
         " Cover macro, policy, market structure, major company actions, and mindshare shifts."
         " Be analytical and focus on what matters for markets."
     )
+
+
+def _resolve_inter_segment_seconds() -> int:
+    configured_music_break = os.getenv("INTER_SEGMENT_MUSIC_SECONDS")
+    if configured_music_break:
+        return int(configured_music_break)
+    return int(os.getenv("INTER_SEGMENT_DELAY_SECONDS", "0"))
 
 
 async def _produce_segments(
@@ -87,6 +95,7 @@ async def run_livestream() -> None:
     segment_buffer_size = int(os.getenv("SEGMENT_BUFFER_SIZE", "3"))
     tts_parallelism = int(os.getenv("TTS_PARALLELISM", "3"))
     tts_max_chars_per_chunk = int(os.getenv("TTS_MAX_CHARS_PER_CHUNK", "450"))
+    inter_segment_seconds = _resolve_inter_segment_seconds()
 
     if not stream_key:
         logger.error("YOUTUBE_STREAM_KEY not provided")
@@ -160,6 +169,25 @@ async def run_livestream() -> None:
                     )
                     memory_store.record_segment(segment)
                     segment_queue.task_done()
+                    if inter_segment_seconds > 0:
+                        logger.info(
+                            "Starting %ss music intermission after segment %s",
+                            inter_segment_seconds,
+                            segment.segment_id,
+                        )
+                        intermission_segment = prepare_intermission_segment(
+                            duration_seconds=inter_segment_seconds,
+                            tts_dir=tts_dir,
+                            ffmpeg_path=ffmpeg_path,
+                        )
+                        await stream_segment(
+                            page=page,
+                            stream_key=stream_key,
+                            background_music_path=background_music_path,
+                            segment=intermission_segment,
+                            capture_backend=capture_backend,
+                            ffmpeg_path=ffmpeg_path,
+                        )
             except KeyboardInterrupt:
                 logger.info("Livestream stopped by user")
             finally:

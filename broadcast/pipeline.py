@@ -29,7 +29,7 @@ def prepare_segment(
         memory_context=memory_context,
         target_duration_seconds=target_duration_seconds,
     )
-    segment_id = f"segment_{int(time.time())}"
+    segment_id = f"segment_{time.time_ns()}"
     audio_path = Path(tts_dir) / f"{segment_id}.wav"
     synthesize_script_to_file(
         script=generated_news.script,
@@ -42,10 +42,10 @@ def prepare_segment(
     duration_seconds = get_audio_duration(str(audio_path), ffmpeg_path)
     return PreparedSegment(
         segment_id=segment_id,
+        kind="news",
         script=generated_news.script,
         provider_name=generated_news.provider_name,
         audio_path=audio_path,
         target_duration_seconds=target_duration_seconds,
         actual_audio_duration_seconds=duration_seconds,
     )
-

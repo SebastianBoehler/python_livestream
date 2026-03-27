@@ -36,6 +36,8 @@ pip install -r requirements.txt
 playwright install
 ```
 
+`requirements.txt` keeps the full local-model toolchain. For the lean streaming-only runtime, the container now installs `requirements-stream.txt` instead.
+
 ### 2. Configure environment
 
 Create a `.env` file (see `.env.example`) and set at least:
@@ -52,6 +54,7 @@ NEWS_SEGMENT_SECONDS=180          # target bulletin duration
 STREAM_CAPTURE_BACKEND=playwright # or screen or virtual-screen
 STREAM_ORIENTATION=landscape      # or portrait
 SEGMENT_BUFFER_SIZE=3             # how many ready segments to keep queued
+INTER_SEGMENT_MUSIC_SECONDS=0     # optional music-only break between news bulletins
 TTS_PARALLELISM=3                 # concurrent TTS chunk synthesis workers
 STREAM_FPS=12                     # stable Playwright capture rate
 STREAM_VIDEO_ENCODER=             # auto: h264_videotoolbox on macOS, libx264 elsewhere
@@ -85,6 +88,14 @@ The stream runtime now keeps a memory layer in `memory/`:
 - `session_index.jsonl`: append-only aired segment history
 - `topic_state.json`: lightweight repeated-topic tracking
 - `rolling_context.md`: human-readable coverage memory for prompts and review
+
+If you want a music-only pause between bulletins, set:
+
+```bash
+INTER_SEGMENT_MUSIC_SECONDS=20 python stream_url.py
+```
+
+`INTER_SEGMENT_DELAY_SECONDS` is also accepted as a compatibility alias. The inserted break uses a generated silent narration track, so viewers hear only the background music during that gap.
 
 For portrait/mobile live streams, switch to:
 
@@ -130,6 +141,19 @@ Or keep it up continuously with Compose:
 
 ```bash
 docker compose up -d
+```
+
+The default Docker image is now optimized for continuous streaming:
+
+- based on `python:3.11-slim-bookworm`
+- installs only the streaming/runtime dependencies from `requirements-stream.txt`
+- uses Playwright Chromium plus Xvfb for isolated browser capture
+- defaults well for low-cost Linux VMs
+
+If you still need the heavyweight GPU/local-TTS image, build [Dockerfile.gpu](/Users/sebastianboehler/Documents/GitHub/python_livestream/Dockerfile.gpu):
+
+```bash
+docker build -f Dockerfile.gpu -t python-livestream-gpu .
 ```
 
 ## Additional Notes

@@ -51,6 +51,8 @@ class BroadcastMemoryStore:
         return "\n".join(context_lines)
 
     def record_segment(self, segment: PreparedSegment) -> None:
+        if segment.kind != "news":
+            return
         aired_at = datetime.now(UTC).isoformat()
         summary = self._summarize_script(segment.script)
         entry = {
@@ -147,4 +149,3 @@ class BroadcastMemoryStore:
             if delimiter in clean:
                 return clean.split(delimiter, 1)[0][:220].strip()
         return clean[:220].strip()
-

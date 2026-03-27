@@ -62,6 +62,7 @@ These settings matter most:
 
 - `NEWS_SEGMENT_SECONDS`: shorter segments increase freshness
 - `SEGMENT_BUFFER_SIZE`: larger queue increases resilience
+- `INTER_SEGMENT_MUSIC_SECONDS`: inserts a music-only gap after each aired bulletin
 - `TTS_PARALLELISM`: faster script-to-audio conversion
 - `TTS_MAX_CHARS_PER_CHUNK`: smaller chunks reduce single-call latency
 - `STREAM_FPS`: safe at `12` with Playwright capture on the current setup, higher for screen mode if the machine can sustain it
@@ -143,6 +144,36 @@ STREAM_VIDEO_ENCODER=libx264
 
 This is the recommended path for 24/7 VM or container operation because it does not expose the host desktop and does not depend on macOS-only video tooling.
 It is Linux-only and will fail fast on macOS.
+
+## Container Strategy
+
+The default container image is now intentionally optimized for continuous streaming rather than local-model inference:
+
+- base image: `python:3.11-slim-bookworm`
+- Python deps: `requirements-stream.txt`
+- browser isolation: Playwright Chromium inside Xvfb
+- encoder default on Linux: `libx264`
+
+This keeps the baseline VM/container requirement materially lower than the previous CUDA-heavy image.
+
+If you need GPU-hosted local TTS models, use [Dockerfile.gpu](/Users/sebastianboehler/Documents/GitHub/python_livestream/Dockerfile.gpu) instead of the default [Dockerfile](/Users/sebastianboehler/Documents/GitHub/python_livestream/Dockerfile).
+
+## Inter-Segment Music
+
+You can now insert an explicit music-only break between prepared news segments:
+
+```dotenv
+INTER_SEGMENT_MUSIC_SECONDS=20
+```
+
+Behavior:
+
+1. the aired news segment finishes
+2. a short silent WAV is generated locally
+3. that silent track is streamed while the regular background music continues
+4. the next queued news segment starts after the break
+
+`INTER_SEGMENT_DELAY_SECONDS` is also accepted as a legacy alias, but `INTER_SEGMENT_MUSIC_SECONDS` is the clearer setting name.
 
 List available screen devices on macOS:
 
