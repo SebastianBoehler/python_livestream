@@ -4,12 +4,13 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import os
 import subprocess
 import time
 from queue import Empty, Full, Queue
 from threading import Event, Thread
 
+from broadcast.capture import CaptureBackendConfig, ffmpeg_video_input_args
+from broadcast.metrics import FfmpegRuntimeMonitor
 from broadcast.models import PreparedSegment
 
 logger = logging.getLogger(__name__)
@@ -80,7 +81,7 @@ async def stream_segment(
     stream_key: str,
     background_music_path: str,
     segment: PreparedSegment,
-    fps: int,
+    capture_backend: CaptureBackendConfig,
     ffmpeg_path: str = "ffmpeg",
 ) -> float:
     filler_duration = max(segment.target_duration_seconds - segment.actual_audio_duration_seconds, 0)
@@ -88,17 +89,13 @@ async def stream_segment(
     rtmp_url = f"rtmp://a.rtmp.youtube.com/live2/{stream_key}"
     command = [
         ffmpeg_path,
-        "-v",
-        "info",
-        "-stats",
-        "-f",
-        "image2pipe",
-        "-thread_queue_size",
-        "512",
-        "-r",
-        str(fps),
-        "-i",
-        "-",
+        "-hide_banner",
+        "-loglevel",
+        "warning",
+        "-nostats",
+        "-progress",
+        "pipe:2",
+        *ffmpeg_video_input_args(capture_backend),
         "-i",
         str(segment.audio_path),
         "-stream_loop",
@@ -110,9 +107,9 @@ async def stream_segment(
         "-pix_fmt",
         "yuv420p",
         "-r",
-        str(fps),
+        str(capture_backend.fps),
         "-g",
-        str(fps * 2),
+        str(capture_backend.fps * 2),
         "-b:v",
         "4500k",
         "-maxrate",
@@ -148,23 +145,36 @@ async def stream_segment(
 
     frame_queue = Queue(maxsize=90)
     stop_event = Event()
-    process = subprocess.Popen(command, stdin=subprocess.PIPE)
-    writer_thread = Thread(target=_ffmpeg_writer, args=(frame_queue, process, stop_event))
-    writer_thread.start()
-    capture_task = asyncio.create_task(_capture_frames(page, frame_queue, stop_event, fps))
+    stdin_stream = subprocess.PIPE if capture_backend.uses_page_screenshots else None
+    process = subprocess.Popen(
+        command,
+        stdin=stdin_stream,
+        stderr=subprocess.PIPE,
+    )
+    monitor = FfmpegRuntimeMonitor(process)
+    monitor.start()
+
+    writer_thread = None
+    capture_task = None
+    if capture_backend.uses_page_screenshots:
+        writer_thread = Thread(target=_ffmpeg_writer, args=(frame_queue, process, stop_event))
+        writer_thread.start()
+        capture_task = asyncio.create_task(_capture_frames(page, frame_queue, stop_event, capture_backend.fps))
+
     await asyncio.to_thread(process.wait)
     stop_event.set()
-    frame_queue.put(None)
-    capture_task.cancel()
-    try:
-        await capture_task
-    except asyncio.CancelledError:
-        pass
-    writer_thread.join(timeout=2)
+    monitor.stop()
+    if capture_backend.uses_page_screenshots and capture_task is not None and writer_thread is not None:
+        frame_queue.put(None)
+        capture_task.cancel()
+        try:
+            await capture_task
+        except asyncio.CancelledError:
+            pass
+        writer_thread.join(timeout=2)
     if process.stdin:
         process.stdin.close()
     if segment.audio_path.exists():
         segment.audio_path.unlink()
     logger.info("Segment finished")
     return total_duration
-

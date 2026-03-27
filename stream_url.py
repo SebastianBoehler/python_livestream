@@ -6,6 +6,7 @@ from concurrent.futures import ThreadPoolExecutor
 from dotenv import load_dotenv
 from playwright.async_api import async_playwright
 
+from broadcast.capture import browser_launch_kwargs, load_capture_backend_config
 from broadcast.memory import BroadcastMemoryStore
 from broadcast.pipeline import prepare_segment
 from broadcast.streaming import stream_segment
@@ -78,7 +79,7 @@ async def run_livestream() -> None:
     load_dotenv(override=True)
     stream_key = os.getenv("YOUTUBE_STREAM_KEY")
     url = os.getenv("STREAM_URL")
-    fps = int(os.getenv("STREAM_FPS", "12"))
+    capture_backend = load_capture_backend_config()
     segment_duration_seconds = int(
         os.getenv("NEWS_SEGMENT_SECONDS", str(int(os.getenv("NEWS_INTERVAL_MINUTES", "15")) * 60))
     )
@@ -108,13 +109,19 @@ async def run_livestream() -> None:
     executor = ThreadPoolExecutor(max_workers=1)
 
     async with async_playwright() as playwright:
-        browser = await playwright.chromium.launch(
-            headless=True,
-            args=["--disable-gpu", "--no-sandbox", "--disable-dev-shm-usage"],
+        browser = await playwright.chromium.launch(**browser_launch_kwargs(capture_backend))
+        page = await browser.new_page(viewport={"width": capture_backend.width, "height": capture_backend.height})
+        logger.info(
+            "Streaming from %s with capture backend=%s fps=%s size=%sx%s",
+            url,
+            capture_backend.name,
+            capture_backend.fps,
+            capture_backend.width,
+            capture_backend.height,
         )
-        page = await browser.new_page(viewport={"width": 1280, "height": 720})
         print(f"Streaming from {url}")
         await page.goto(url)
+        await page.bring_to_front()
         producer_task = asyncio.create_task(
             _produce_segments(
                 segment_queue=segment_queue,
@@ -138,7 +145,7 @@ async def run_livestream() -> None:
                     stream_key=stream_key,
                     background_music_path=background_music_path,
                     segment=segment,
-                    fps=fps,
+                    capture_backend=capture_backend,
                     ffmpeg_path=ffmpeg_path,
                 )
                 memory_store.record_segment(segment)

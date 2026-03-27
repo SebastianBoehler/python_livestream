@@ -8,6 +8,7 @@ Automate YouTube livestreams with scheduled text-to-speech overlays and backgrou
 - Buffer prepared news segments ahead of playout
 - Persist recent coverage memory to avoid repeating the same angles
 - Route news generation through xAI, Gemini, or OpenRouter
+- Support two video capture modes: stable Playwright screenshots and experimental screen capture
 - Loop background music so the stream never goes silent
 - Easily switch between several TTS models and language models
 
@@ -48,6 +49,7 @@ XAI_API_KEY=<grok-token>          # required for Grok LLM
 ELEVENLABS_API_KEY=<11labs-key>   # required for ElevenLabs TTS
 STREAM_URL=https://example.com    # optional website to stream
 NEWS_SEGMENT_SECONDS=180          # target bulletin duration
+STREAM_CAPTURE_BACKEND=playwright # or screen
 SEGMENT_BUFFER_SIZE=3             # how many ready segments to keep queued
 TTS_PARALLELISM=3                 # concurrent TTS chunk synthesis workers
 STREAM_FPS=12                     # stable Playwright capture rate
@@ -102,7 +104,9 @@ docker run --env-file .env python-livestream python stream_url.py
 - FFmpeg must be installed and available in your PATH.
 - Replace `screenshot.png` and `audio/song.mp3` with your own assets.
 - The buffered pipeline works best with short segments such as `120-240` seconds.
-- The current Playwright screenshot backend is stable around `12 FPS`. Reaching `25 FPS` likely requires a different capture backend.
+- The Playwright screenshot backend is the stable default around `12 FPS`.
+- The `screen` backend is intended for higher frame rates by capturing a visible Chromium window through FFmpeg `avfoundation` on macOS.
+- FFmpeg progress logs now include `speed`, coarse runtime latency, and FFmpeg process CPU so you can compare backends empirically.
 - See [docs/architecture.md](/Users/sebastianboehler/Documents/GitHub/python_livestream/docs/architecture.md) for the memory, buffering, ADK, and OpenRouter layout.
 
 ## Contributing

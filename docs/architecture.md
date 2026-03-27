@@ -64,17 +64,57 @@ These settings matter most:
 - `SEGMENT_BUFFER_SIZE`: larger queue increases resilience
 - `TTS_PARALLELISM`: faster script-to-audio conversion
 - `TTS_MAX_CHARS_PER_CHUNK`: smaller chunks reduce single-call latency
-- `STREAM_FPS`: safe at `12` with Playwright capture on the current setup
+- `STREAM_FPS`: safe at `12` with Playwright capture on the current setup, higher for screen mode if the machine can sustain it
+- `STREAM_CAPTURE_BACKEND`: `playwright` or `screen`
 
 ## 25 FPS Path
 
-The current Playwright screenshot backend is not the right long-term path for `25 FPS`.
+The current Playwright screenshot backend is not the right long-term path for `25 FPS`, so the project now includes a second capture mode:
 
-To reach that territory, add a separate capture backend:
+```dotenv
+STREAM_CAPTURE_BACKEND=screen
+STREAM_FPS=25
+STREAM_WIDTH=1920
+STREAM_HEIGHT=1080
+SCREEN_CAPTURE_DEVICE=3
+SCREEN_BROWSER_FULLSCREEN=true
+```
 
-1. visible Chromium window
-2. native screen capture through FFmpeg (`avfoundation` on macOS)
-3. same audio/buffering pipeline
-4. runtime switch such as `STREAM_CAPTURE_BACKEND=playwright|screen`
+How it works:
 
-That preserves the new buffering and memory layers while replacing only the visual capture path.
+1. Chromium is launched visibly instead of headless
+2. FFmpeg captures the display through `avfoundation`
+3. The audio, memory, and buffered segment pipeline stay unchanged
+
+List available screen devices on macOS:
+
+```bash
+ffmpeg -f avfoundation -list_devices true -i ""
+```
+
+Recommended comparison workflow:
+
+1. Run the stable path
+
+```bash
+STREAM_CAPTURE_BACKEND=playwright STREAM_FPS=12 python stream_url.py
+```
+
+2. Run the high-fps path
+
+```bash
+STREAM_CAPTURE_BACKEND=screen STREAM_FPS=25 python stream_url.py
+```
+
+3. Compare the logs:
+
+- `FFmpeg progress: ... speed=... latency=...`
+- `FFmpeg process stats: cpu=... rss=...`
+- `Frames captured: ...` for the Playwright backend
+
+Interpretation:
+
+- `speed >= 1.0x` means FFmpeg is keeping up with realtime
+- lower `latency` is better
+- lower CPU at the same quality is better
+- if `screen` mode holds `25 FPS` with `speed >= 1.0x`, it is the better ingest path
