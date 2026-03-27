@@ -112,9 +112,11 @@ async def run_livestream() -> None:
         browser = await playwright.chromium.launch(**browser_launch_kwargs(capture_backend))
         page = await browser.new_page(viewport={"width": capture_backend.width, "height": capture_backend.height})
         logger.info(
-            "Streaming from %s with capture backend=%s fps=%s size=%sx%s",
+            "Streaming from %s with capture backend=%s orientation=%s aspect=%s fps=%s size=%sx%s",
             url,
             capture_backend.name,
+            capture_backend.orientation,
+            capture_backend.aspect_ratio_label,
             capture_backend.fps,
             capture_backend.width,
             capture_backend.height,

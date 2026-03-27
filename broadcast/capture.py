@@ -9,6 +9,7 @@ from dataclasses import dataclass
 @dataclass(slots=True)
 class CaptureBackendConfig:
     name: str
+    orientation: str
     fps: int
     width: int
     height: int
@@ -24,16 +25,27 @@ class CaptureBackendConfig:
     def uses_page_screenshots(self) -> bool:
         return self.name == "playwright"
 
+    @property
+    def is_vertical(self) -> bool:
+        return self.height > self.width
+
+    @property
+    def aspect_ratio_label(self) -> str:
+        return "9:16" if self.is_vertical else "16:9"
+
 
 def load_capture_backend_config() -> CaptureBackendConfig:
     name = os.getenv("STREAM_CAPTURE_BACKEND", "playwright").strip().lower()
     if name not in {"playwright", "screen"}:
         raise ValueError(f"Unsupported STREAM_CAPTURE_BACKEND: {name}")
+    orientation = os.getenv("STREAM_ORIENTATION", "landscape").strip().lower()
+    if orientation not in {"landscape", "portrait"}:
+        raise ValueError(f"Unsupported STREAM_ORIENTATION: {orientation}")
     fps = int(os.getenv("STREAM_FPS", "12"))
-    width = int(os.getenv("STREAM_WIDTH", "1280"))
-    height = int(os.getenv("STREAM_HEIGHT", "720"))
+    width, height = _resolve_dimensions(orientation)
     return CaptureBackendConfig(
         name=name,
+        orientation=orientation,
         fps=fps,
         width=width,
         height=height,
@@ -89,3 +101,13 @@ def ffmpeg_video_input_args(config: CaptureBackendConfig) -> list[str]:
         "-i",
         "-",
     ]
+
+
+def _resolve_dimensions(orientation: str) -> tuple[int, int]:
+    width_override = os.getenv("STREAM_WIDTH")
+    height_override = os.getenv("STREAM_HEIGHT")
+    if width_override and height_override:
+        return int(width_override), int(height_override)
+    if orientation == "portrait":
+        return 1080, 1920
+    return 1280, 720

@@ -66,6 +66,39 @@ These settings matter most:
 - `TTS_MAX_CHARS_PER_CHUNK`: smaller chunks reduce single-call latency
 - `STREAM_FPS`: safe at `12` with Playwright capture on the current setup, higher for screen mode if the machine can sustain it
 - `STREAM_CAPTURE_BACKEND`: `playwright` or `screen`
+- `STREAM_ORIENTATION`: `landscape` or `portrait`
+
+## Vertical / Portrait Streaming
+
+YouTube’s current live-stream guidance says vertical streams give viewers on mobile a full-screen viewing experience and can be surfaced in the Shorts feed. It also supports running horizontal and vertical versions at the same time with separate stream keys in Live Control Room dual-stream mode.
+
+This project now supports portrait output directly:
+
+```dotenv
+STREAM_ORIENTATION=portrait
+```
+
+Default frame sizes:
+
+- `landscape`: `1280x720`
+- `portrait`: `1080x1920`
+
+You can still override with explicit `STREAM_WIDTH` and `STREAM_HEIGHT`.
+
+Examples:
+
+```bash
+STREAM_ORIENTATION=portrait STREAM_CAPTURE_BACKEND=playwright python stream_url.py
+```
+
+```bash
+STREAM_ORIENTATION=portrait STREAM_CAPTURE_BACKEND=screen STREAM_FPS=25 python stream_url.py
+```
+
+Current scope:
+
+- single portrait stream output is supported in this repo
+- true YouTube dual-stream publishing with separate horizontal and vertical stream keys is not yet implemented here
 
 ## 25 FPS Path
 

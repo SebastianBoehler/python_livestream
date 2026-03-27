@@ -50,6 +50,7 @@ ELEVENLABS_API_KEY=<11labs-key>   # required for ElevenLabs TTS
 STREAM_URL=https://example.com    # optional website to stream
 NEWS_SEGMENT_SECONDS=180          # target bulletin duration
 STREAM_CAPTURE_BACKEND=playwright # or screen
+STREAM_ORIENTATION=landscape      # or portrait
 SEGMENT_BUFFER_SIZE=3             # how many ready segments to keep queued
 TTS_PARALLELISM=3                 # concurrent TTS chunk synthesis workers
 STREAM_FPS=12                     # stable Playwright capture rate
@@ -75,6 +76,14 @@ The stream runtime now keeps a memory layer in `memory/`:
 - `session_index.jsonl`: append-only aired segment history
 - `topic_state.json`: lightweight repeated-topic tracking
 - `rolling_context.md`: human-readable coverage memory for prompts and review
+
+For portrait/mobile live streams, switch to:
+
+```bash
+STREAM_ORIENTATION=portrait python stream_url.py
+```
+
+That uses a vertical frame by default so the output is taller than wide, which aligns with YouTube’s vertical live-stream experience on mobile.
 
 ### 4. Generate a news video
 
