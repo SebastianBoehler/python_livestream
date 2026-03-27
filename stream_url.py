@@ -10,6 +10,7 @@ from broadcast.capture import browser_launch_kwargs, load_capture_backend_config
 from broadcast.memory import BroadcastMemoryStore
 from broadcast.pipeline import prepare_segment
 from broadcast.streaming import stream_segment
+from broadcast.virtual_display import managed_virtual_display
 from tts.gemini import generate as generate_tts_audio
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -108,64 +109,71 @@ async def run_livestream() -> None:
     stop_event = asyncio.Event()
     executor = ThreadPoolExecutor(max_workers=1)
 
-    async with async_playwright() as playwright:
-        browser = await playwright.chromium.launch(**browser_launch_kwargs(capture_backend))
-        page = await browser.new_page(viewport={"width": capture_backend.width, "height": capture_backend.height})
-        logger.info(
-            "Streaming from %s with capture backend=%s orientation=%s aspect=%s fps=%s size=%sx%s",
-            url,
-            capture_backend.name,
-            capture_backend.orientation,
-            capture_backend.aspect_ratio_label,
-            capture_backend.fps,
-            capture_backend.width,
-            capture_backend.height,
-        )
-        print(f"Streaming from {url}")
-        await page.goto(url)
-        await page.bring_to_front()
-        producer_task = asyncio.create_task(
-            _produce_segments(
-                segment_queue=segment_queue,
-                stop_event=stop_event,
-                executor=executor,
-                memory_store=memory_store,
-                tts_dir=tts_dir,
-                ffmpeg_path=ffmpeg_path,
-                target_duration_seconds=segment_duration_seconds,
-                tts_parallelism=tts_parallelism,
-                tts_max_chars_per_chunk=tts_max_chars_per_chunk,
+    display_context = managed_virtual_display(capture_backend)
+    with display_context as virtual_display:
+        browser_env = virtual_display.browser_env if virtual_display is not None else None
+        async with async_playwright() as playwright:
+            browser = await playwright.chromium.launch(
+                **browser_launch_kwargs(capture_backend, browser_env=browser_env)
             )
-        )
-
-        try:
-            while True:
-                segment = await segment_queue.get()
-                logger.info("Starting playout for segment %s", segment.segment_id)
-                await stream_segment(
-                    page=page,
-                    stream_key=stream_key,
-                    background_music_path=background_music_path,
-                    segment=segment,
-                    capture_backend=capture_backend,
+            page = await browser.new_page(viewport={"width": capture_backend.width, "height": capture_backend.height})
+            logger.info(
+                "Streaming from %s with capture backend=%s orientation=%s aspect=%s fps=%s size=%sx%s",
+                url,
+                capture_backend.name,
+                capture_backend.orientation,
+                capture_backend.aspect_ratio_label,
+                capture_backend.fps,
+                capture_backend.width,
+                capture_backend.height,
+            )
+            if virtual_display is not None:
+                logger.info("Using isolated virtual display %s", virtual_display.display)
+            print(f"Streaming from {url}")
+            await page.goto(url)
+            await page.bring_to_front()
+            producer_task = asyncio.create_task(
+                _produce_segments(
+                    segment_queue=segment_queue,
+                    stop_event=stop_event,
+                    executor=executor,
+                    memory_store=memory_store,
+                    tts_dir=tts_dir,
                     ffmpeg_path=ffmpeg_path,
+                    target_duration_seconds=segment_duration_seconds,
+                    tts_parallelism=tts_parallelism,
+                    tts_max_chars_per_chunk=tts_max_chars_per_chunk,
                 )
-                memory_store.record_segment(segment)
-                segment_queue.task_done()
-        except KeyboardInterrupt:
-            logger.info("Livestream stopped by user")
-        finally:
-            stop_event.set()
-            producer_task.cancel()
+            )
+
             try:
-                await producer_task
-            except asyncio.CancelledError:
-                pass
-            executor.shutdown(wait=False, cancel_futures=True)
-            try:
-                await browser.close()
-            except Exception as error:
-                logger.warning("Browser shutdown raised after interruption: %s", error)
+                while True:
+                    segment = await segment_queue.get()
+                    logger.info("Starting playout for segment %s", segment.segment_id)
+                    await stream_segment(
+                        page=page,
+                        stream_key=stream_key,
+                        background_music_path=background_music_path,
+                        segment=segment,
+                        capture_backend=capture_backend,
+                        ffmpeg_path=ffmpeg_path,
+                    )
+                    memory_store.record_segment(segment)
+                    segment_queue.task_done()
+            except KeyboardInterrupt:
+                logger.info("Livestream stopped by user")
+            finally:
+                stop_event.set()
+                producer_task.cancel()
+                try:
+                    await producer_task
+                except asyncio.CancelledError:
+                    pass
+                executor.shutdown(wait=False, cancel_futures=True)
+                try:
+                    await browser.close()
+                except Exception as error:
+                    logger.warning("Browser shutdown raised after interruption: %s", error)
 
 
 if __name__ == "__main__":

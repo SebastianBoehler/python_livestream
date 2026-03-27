@@ -2,6 +2,7 @@ services:
   stream:
     build: .
     image: python-livestream
+    restart: unless-stopped
     env_file:
       - .env
     shm_size: '1gb'

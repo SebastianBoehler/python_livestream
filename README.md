@@ -8,7 +8,7 @@ Automate YouTube livestreams with scheduled text-to-speech overlays and backgrou
 - Buffer prepared news segments ahead of playout
 - Persist recent coverage memory to avoid repeating the same angles
 - Route news generation through xAI, Gemini, or OpenRouter
-- Support two video capture modes: stable Playwright screenshots and experimental screen capture
+- Support three video capture modes: stable Playwright screenshots, macOS desktop capture, and isolated virtual-display capture for containers/VMs
 - Loop background music so the stream never goes silent
 - Easily switch between several TTS models and language models
 
@@ -49,11 +49,12 @@ XAI_API_KEY=<grok-token>          # required for Grok LLM
 ELEVENLABS_API_KEY=<11labs-key>   # required for ElevenLabs TTS
 STREAM_URL=https://example.com    # optional website to stream
 NEWS_SEGMENT_SECONDS=180          # target bulletin duration
-STREAM_CAPTURE_BACKEND=playwright # or screen
+STREAM_CAPTURE_BACKEND=playwright # or screen or virtual-screen
 STREAM_ORIENTATION=landscape      # or portrait
 SEGMENT_BUFFER_SIZE=3             # how many ready segments to keep queued
 TTS_PARALLELISM=3                 # concurrent TTS chunk synthesis workers
 STREAM_FPS=12                     # stable Playwright capture rate
+STREAM_VIDEO_ENCODER=             # auto: h264_videotoolbox on macOS, libx264 elsewhere
 NEWS_LLM_PROVIDER_ORDER=xai       # or openrouter, gemini, xai,openrouter
 ```
 
@@ -70,6 +71,14 @@ To livestream a website with scheduled news segments:
 ```bash
 python stream_url.py
 ```
+
+For an isolated browser-only high-fps stream that does not capture your real desktop:
+
+```bash
+STREAM_CAPTURE_BACKEND=virtual-screen STREAM_FPS=25 python stream_url.py
+```
+
+`virtual-screen` is intended for Linux/Xvfb environments such as Docker or a VM. On macOS, keep using `playwright` or the display-level `screen` backend.
 
 The stream runtime now keeps a memory layer in `memory/`:
 
@@ -108,13 +117,30 @@ To stream a website instead of an image:
 docker run --env-file .env python-livestream python stream_url.py
 ```
 
+For long-running container or VM use, prefer the isolated virtual-display backend:
+
+```bash
+docker run --env-file .env \
+  -e STREAM_CAPTURE_BACKEND=virtual-screen \
+  -e STREAM_FPS=25 \
+  python-livestream python stream_url.py
+```
+
+Or keep it up continuously with Compose:
+
+```bash
+docker compose up -d
+```
+
 ## Additional Notes
 
 - FFmpeg must be installed and available in your PATH.
 - Replace `screenshot.png` and `audio/song.mp3` with your own assets.
 - The buffered pipeline works best with short segments such as `120-240` seconds.
 - The Playwright screenshot backend is the stable default around `12 FPS`.
-- The `screen` backend is intended for higher frame rates by capturing a visible Chromium window through FFmpeg `avfoundation` on macOS.
+- The `screen` backend captures a macOS display through `avfoundation`, so it will include the whole desktop on that display.
+- The `virtual-screen` backend runs Chromium inside its own Xvfb display and captures only that isolated display, which is the right path for containerized 24/7 streaming.
+- Video encoding now defaults to `h264_videotoolbox` on macOS and `libx264` on Linux/VM hosts.
 - FFmpeg progress logs now include `speed`, coarse runtime latency, and FFmpeg process CPU so you can compare backends empirically.
 - See [docs/architecture.md](/Users/sebastianboehler/Documents/GitHub/python_livestream/docs/architecture.md) for the memory, buffering, ADK, and OpenRouter layout.
 

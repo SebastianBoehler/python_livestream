@@ -65,7 +65,7 @@ These settings matter most:
 - `TTS_PARALLELISM`: faster script-to-audio conversion
 - `TTS_MAX_CHARS_PER_CHUNK`: smaller chunks reduce single-call latency
 - `STREAM_FPS`: safe at `12` with Playwright capture on the current setup, higher for screen mode if the machine can sustain it
-- `STREAM_CAPTURE_BACKEND`: `playwright` or `screen`
+- `STREAM_CAPTURE_BACKEND`: `playwright`, `screen`, or `virtual-screen`
 - `STREAM_ORIENTATION`: `landscape` or `portrait`
 
 ## Vertical / Portrait Streaming
@@ -95,6 +95,10 @@ STREAM_ORIENTATION=portrait STREAM_CAPTURE_BACKEND=playwright python stream_url.
 STREAM_ORIENTATION=portrait STREAM_CAPTURE_BACKEND=screen STREAM_FPS=25 python stream_url.py
 ```
 
+```bash
+STREAM_ORIENTATION=portrait STREAM_CAPTURE_BACKEND=virtual-screen STREAM_FPS=25 python stream_url.py
+```
+
 Current scope:
 
 - single portrait stream output is supported in this repo
@@ -102,7 +106,7 @@ Current scope:
 
 ## 25 FPS Path
 
-The current Playwright screenshot backend is not the right long-term path for `25 FPS`, so the project now includes a second capture mode:
+The current Playwright screenshot backend is not the right long-term path for `25 FPS`, so the project now includes two high-fps paths:
 
 ```dotenv
 STREAM_CAPTURE_BACKEND=screen
@@ -113,11 +117,32 @@ SCREEN_CAPTURE_DEVICE=3
 SCREEN_BROWSER_FULLSCREEN=true
 ```
 
-How it works:
+macOS `screen` mode:
 
 1. Chromium is launched visibly instead of headless
 2. FFmpeg captures the display through `avfoundation`
-3. The audio, memory, and buffered segment pipeline stay unchanged
+3. Because it captures a display device, it will include the whole desktop on that display
+
+Linux/container `virtual-screen` mode:
+
+```dotenv
+STREAM_CAPTURE_BACKEND=virtual-screen
+STREAM_FPS=25
+STREAM_WIDTH=1920
+STREAM_HEIGHT=1080
+VIRTUAL_DISPLAY=:99
+VIRTUAL_DISPLAY_SCREEN=0
+VIRTUAL_DISPLAY_COLOR_DEPTH=24
+STREAM_VIDEO_ENCODER=libx264
+```
+
+1. Xvfb starts an isolated display
+2. Chromium launches inside that display
+3. FFmpeg captures only that virtual display with `x11grab`
+4. The audio, memory, and buffered segment pipeline stay unchanged
+
+This is the recommended path for 24/7 VM or container operation because it does not expose the host desktop and does not depend on macOS-only video tooling.
+It is Linux-only and will fail fast on macOS.
 
 List available screen devices on macOS:
 
@@ -133,13 +158,19 @@ Recommended comparison workflow:
 STREAM_CAPTURE_BACKEND=playwright STREAM_FPS=12 python stream_url.py
 ```
 
-2. Run the high-fps path
+2. Run the macOS display-capture path
 
 ```bash
 STREAM_CAPTURE_BACKEND=screen STREAM_FPS=25 python stream_url.py
 ```
 
-3. Compare the logs:
+3. Run the isolated Linux/container path
+
+```bash
+STREAM_CAPTURE_BACKEND=virtual-screen STREAM_FPS=25 python stream_url.py
+```
+
+4. Compare the logs:
 
 - `FFmpeg progress: ... speed=... latency=...`
 - `FFmpeg process stats: cpu=... rss=...`

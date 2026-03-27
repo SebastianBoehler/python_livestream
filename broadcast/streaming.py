@@ -10,6 +10,7 @@ from queue import Empty, Full, Queue
 from threading import Event, Thread
 
 from broadcast.capture import CaptureBackendConfig, ffmpeg_video_input_args
+from broadcast.encoding import ffmpeg_video_encoder_args
 from broadcast.metrics import FfmpegRuntimeMonitor
 from broadcast.models import PreparedSegment
 
@@ -102,8 +103,7 @@ async def stream_segment(
         "-1",
         "-i",
         background_music_path,
-        "-c:v",
-        "h264_videotoolbox",
+        *ffmpeg_video_encoder_args(),
         "-pix_fmt",
         "yuv420p",
         "-r",
@@ -118,8 +118,6 @@ async def stream_segment(
         "10000k",
         "-profile:v",
         "baseline",
-        "-realtime",
-        "1",
         "-filter_complex",
         "[1:a]apad,volume=1.0[news];[2:a]volume=0.04[bg];[news][bg]amix=inputs=2:duration=longest[aout]",
         "-map",
