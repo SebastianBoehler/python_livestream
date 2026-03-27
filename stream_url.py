@@ -76,7 +76,7 @@ async def _produce_segments(
 
 
 async def run_livestream() -> None:
-    load_dotenv(override=True)
+    load_dotenv(override=False)
     stream_key = os.getenv("YOUTUBE_STREAM_KEY")
     url = os.getenv("STREAM_URL")
     capture_backend = load_capture_backend_config()
