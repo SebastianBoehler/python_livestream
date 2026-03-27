@@ -1,22 +1,21 @@
-# GPU-enabled image for Chroma-4B TTS (requires ~24GB VRAM)
-FROM nvidia/cuda:12.1.0-cudnn8-devel-ubuntu22.04
+# Lightweight default image for continuous livestreaming
+FROM python:3.11-slim-bookworm
 
-# Install system dependencies including Python and audio libs
+# Install system dependencies for FFmpeg, Chromium, and Xvfb capture
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    python3.11 python3.11-venv python3-pip \
-    ffmpeg git libsndfile1 xvfb && \
+    ffmpeg git xvfb \
+    libglib2.0-0 libnss3 libnspr4 libdbus-1-3 libatk1.0-0 libatk-bridge2.0-0 \
+    libcups2 libdrm2 libxkbcommon0 libatspi2.0-0 libxcomposite1 libxdamage1 \
+    libxfixes3 libxrandr2 libgbm1 libasound2 libpango-1.0-0 libcairo2 libgtk-3-0 \
+    libx11-xcb1 libxcursor1 libxi6 libxrender1 libxtst6 ca-certificates && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
-
-# Set python3.11 as default
-RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1 && \
-    update-alternatives --install /usr/bin/python python /usr/bin/python3.11 1
 
 WORKDIR /app
 
-# Install Python dependencies
-COPY requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
-RUN python -m playwright install --with-deps chromium
+# Install Python dependencies for the streaming path only
+COPY requirements-stream.txt ./
+RUN pip install --no-cache-dir -r requirements-stream.txt
+RUN python -m playwright install chromium
 
 # Copy application code
 COPY . .

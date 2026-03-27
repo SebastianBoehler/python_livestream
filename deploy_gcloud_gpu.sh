@@ -22,7 +22,7 @@ echo "GPU: $GPU_TYPE x $GPU_COUNT"
 
 # Build Docker image
 echo "Building Docker image..."
-docker build -t gcr.io/$PROJECT_ID/$IMAGE_NAME:$IMAGE_TAG .
+docker build -f Dockerfile.gpu -t gcr.io/$PROJECT_ID/$IMAGE_NAME:$IMAGE_TAG .
 
 # Push to Google Container Registry
 echo "Pushing to GCR..."

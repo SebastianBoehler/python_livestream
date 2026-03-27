@@ -6,4 +6,6 @@ services:
     env_file:
       - .env
     shm_size: '1gb'
+    environment:
+      STREAM_CAPTURE_BACKEND: ${STREAM_CAPTURE_BACKEND:-virtual-screen}
     command: python stream_url.py

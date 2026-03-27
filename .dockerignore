@@ -1,4 +1,10 @@
 __pycache__/
 *.pyc
 .git/
+.env
+.DS_Store
+venv/
+memory/
+offload/
+audio/recordings/
 audio/tts/
