@@ -53,23 +53,40 @@
       font-size: 44px;
       line-height: 1;
       font-weight: 700;
+      letter-spacing: -0.04em;
     }
     .strapline, .host, .clock {
       color: var(--muted);
     }
     .host-badge {
+      display: flex;
+      align-items: center;
+      gap: 14px;
       padding: 12px 16px;
-      border-radius: 16px;
+      border-radius: 18px;
       border: 1px solid rgba(255,255,255,0.1);
       background: rgba(8, 11, 20, 0.28);
       backdrop-filter: blur(20px);
-      min-width: 250px;
+      min-width: 260px;
+    }
+    .host-avatar {
+      width: 42px;
+      height: 42px;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      color: #08111a;
+      font-weight: 700;
+      letter-spacing: 0.06em;
     }
     .content {
       display: grid;
       grid-template-columns: minmax(0, 1.8fr) minmax(300px, 0.95fr);
       gap: 18px;
       min-height: 0;
+      position: relative;
     }
     .hero, .sidebar {
       border-radius: 28px;
@@ -77,6 +94,7 @@
       border: 1px solid rgba(255,255,255,0.08);
       backdrop-filter: blur(24px);
       overflow: hidden;
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.22);
     }
     .hero {
       position: relative;
@@ -104,9 +122,10 @@
     }
     .headline {
       font-size: 42px;
-      line-height: 1.08;
+      line-height: 1.06;
       max-width: 16ch;
       margin: 0;
+      letter-spacing: -0.04em;
     }
     .points {
       list-style: none;
@@ -115,6 +134,7 @@
       display: grid;
       gap: 14px;
       z-index: 1;
+      align-content: start;
     }
     .points li {
       padding: 16px 18px;
@@ -130,11 +150,19 @@
       opacity: 0.18;
       pointer-events: none;
     }
+    .iframe-shell::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(180deg, rgba(5, 9, 16, 0.18), rgba(5, 9, 16, 0.55)),
+        linear-gradient(90deg, rgba(5, 9, 16, 0.28), transparent 42%, rgba(5, 9, 16, 0.32));
+    }
     .iframe-shell iframe {
       width: 100%;
       height: 100%;
       border: 0;
-      filter: saturate(0.9) contrast(1.05);
+      filter: saturate(0.96) contrast(1.04);
     }
     .sidebar {
       padding: 22px;
@@ -201,13 +229,146 @@
       color: var(--accent);
       margin: 0 14px;
     }
+    .layout-overlay .content {
+      grid-template-columns: 1fr;
+    }
+    .layout-overlay .hero {
+      min-height: calc(100vh - 164px);
+      background: rgba(7, 12, 20, 0.68);
+    }
+    .layout-overlay .iframe-shell {
+      opacity: 0.95;
+    }
+    .layout-overlay .headline-block {
+      position: absolute;
+      left: 26px;
+      bottom: 176px;
+      width: min(720px, calc(100% - 440px));
+      padding: 22px 24px;
+      border-radius: 26px;
+      background: linear-gradient(180deg, rgba(5, 9, 16, 0.18), rgba(5, 9, 16, 0.68));
+      backdrop-filter: blur(8px);
+    }
+    .layout-overlay .points {
+      position: absolute;
+      left: 26px;
+      right: 400px;
+      bottom: 30px;
+      padding: 0;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .layout-overlay .points li {
+      min-height: 120px;
+      background: linear-gradient(180deg, rgba(8, 13, 22, 0.82), rgba(8, 13, 22, 0.58));
+      border-left: 0;
+      border-top: 3px solid var(--accent);
+      box-shadow: 0 14px 34px rgba(0, 0, 0, 0.18);
+    }
+    .layout-overlay .sidebar {
+      position: absolute;
+      top: 18px;
+      right: 18px;
+      width: 360px;
+      max-height: calc(100% - 36px);
+      z-index: 2;
+      background: rgba(6, 11, 20, 0.68);
+      backdrop-filter: blur(16px);
+    }
+    .layout-overlay .sidebar .source-card {
+      background: rgba(255,255,255,0.06);
+    }
+    .layout-overlay.segment-market-open .headline,
+    .layout-overlay.segment-live-opening .headline,
+    .layout-overlay.segment-headline .headline {
+      font-size: 58px;
+      max-width: 11ch;
+    }
+    .layout-overlay.segment-desk-drilldown .headline,
+    .layout-overlay.segment-deep-dive .headline {
+      font-size: 50px;
+      max-width: 12ch;
+    }
+    .layout-overlay.segment-close-notes .points,
+    .layout-overlay.segment-recap .points,
+    .layout-overlay.segment-positioning-reset .points {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      right: 400px;
+    }
+    .layout-overlay.segment-intermission .headline-block {
+      bottom: 90px;
+      width: min(720px, calc(100% - 120px));
+    }
+    .layout-overlay.segment-intermission .points {
+      right: 40px;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
     @keyframes ticker-scroll {
       0% { transform: translateX(0); }
       100% { transform: translateX(-50%); }
     }
+    @media (max-width: 1180px) {
+      .layout-overlay .headline-block {
+        width: min(640px, calc(100% - 360px));
+      }
+      .layout-overlay .points {
+        right: 330px;
+        grid-template-columns: 1fr;
+      }
+      .layout-overlay .sidebar {
+        width: 290px;
+      }
+    }
+    @media (max-width: 900px) {
+      .content,
+      .layout-overlay .content {
+        grid-template-columns: 1fr;
+      }
+      .layout-overlay .sidebar,
+      .sidebar {
+        position: relative;
+        top: auto;
+        right: auto;
+        width: auto;
+        max-height: none;
+      }
+      .layout-overlay .headline-block,
+      .layout-overlay .points {
+        position: relative;
+        left: auto;
+        right: auto;
+        bottom: auto;
+        width: auto;
+      }
+      .layout-overlay .points,
+      .points {
+        padding: 0 24px 24px;
+        grid-template-columns: 1fr;
+      }
+      .layout-overlay .headline-block {
+        margin: 24px;
+      }
+      .layout-overlay .hero {
+        min-height: 0;
+        padding-bottom: 24px;
+      }
+      .title {
+        font-size: 34px;
+      }
+      .headline,
+      .layout-overlay .headline {
+        font-size: 38px !important;
+      }
+      .frame {
+        padding: 16px;
+      }
+      .host-badge {
+        min-width: 0;
+      }
+    }
   </style>
 </head>
-<body>
+<body class="{{BODY_CLASS}}">
   <div class="frame">
     <header class="topbar">
       <div class="show-meta">
@@ -216,9 +377,12 @@
         <div class="strapline">{{SHOW_STRAPLINE}}</div>
       </div>
       <div class="host-badge">
-        <div>{{HOST_NAME}}</div>
-        <div class="host">{{HOST_ROLE}}</div>
-        <div class="clock" id="clock">--:-- UTC</div>
+        <div class="host-avatar">{{HOST_INITIALS}}</div>
+        <div>
+          <div>{{HOST_NAME}}</div>
+          <div class="host">{{HOST_ROLE}}</div>
+          <div class="clock" id="clock">--:-- UTC</div>
+        </div>
       </div>
     </header>
     <main class="content">

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from html import escape
 from pathlib import Path
 from typing import Any
@@ -25,6 +26,7 @@ def render_segment_page(
     headline = summary or brief.segment_template.label
     return _write_page(
         show_config=show_config,
+        segment_kind=brief.segment_template.kind,
         segment_label=brief.segment_template.label,
         headline=headline,
         key_points=_script_sentences(script)[:3],
@@ -43,6 +45,7 @@ def render_intermission_page(
 ) -> Path:
     return _write_page(
         show_config=show_config,
+        segment_kind="intermission",
         segment_label="Music Break",
         headline=f"Resetting the rundown for the next segment in about {duration_seconds} seconds.",
         key_points=(
@@ -73,6 +76,7 @@ def render_preview_index(
 def _write_page(
     *,
     show_config: ShowConfig,
+    segment_kind: str,
     segment_label: str,
     headline: str,
     key_points: tuple[str, ...],
@@ -85,8 +89,11 @@ def _write_page(
     output.parent.mkdir(parents=True, exist_ok=True)
     template = TEMPLATE_PATH.read_text(encoding="utf-8")
     ticker_track = _ticker_track(ticker_items)
+    segment_kind_class = _slug(segment_kind) if segment_kind else "segment"
+    layout_mode = _normalize_layout_mode(show_config.studio.layout_mode)
     replacements = {
         "{{PAGE_TITLE}}": escape(f"{show_config.title} Studio"),
+        "{{BODY_CLASS}}": f"layout-{layout_mode} segment-{segment_kind_class}",
         "{{PRIMARY_COLOR}}": show_config.branding.primary_color,
         "{{ACCENT_COLOR}}": show_config.branding.accent_color,
         "{{BACKGROUND_START}}": show_config.branding.background_start,
@@ -99,6 +106,7 @@ def _write_page(
         "{{SHOW_STRAPLINE}}": escape(show_config.studio.strapline or show_config.tagline),
         "{{HOST_NAME}}": escape(show_config.host_name),
         "{{HOST_ROLE}}": escape(show_config.host_role),
+        "{{HOST_INITIALS}}": escape(_initials(show_config.host_name)),
         "{{SEGMENT_LABEL}}": escape(segment_label),
         "{{HEADLINE}}": escape(headline),
         "{{POINTS_MARKUP}}": "".join(f"<li>{escape(point)}</li>" for point in key_points if point),
@@ -152,6 +160,18 @@ def _render_iframe(iframe_url: str) -> str:
     )
 
 
+def _normalize_layout_mode(value: str) -> str:
+    normalized = (value or "split").strip().lower()
+    if normalized in {"overlay", "split"}:
+        return normalized
+    return "split"
+
+
+def _initials(value: str) -> str:
+    parts = [part[0].upper() for part in value.split() if part]
+    return "".join(parts[:2]) or "HB"
+
+
 def _script_sentences(script: str) -> tuple[str, ...]:
     cleaned = " ".join(script.split())
     if not cleaned:
@@ -165,6 +185,10 @@ def _script_sentences(script: str) -> tuple[str, ...]:
             for fragment in fragments
         )
     return (cleaned,)
+
+
+def _slug(value: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "-", value.strip().lower()).strip("-")
 
 
 __all__ = ["render_intermission_page", "render_preview_index", "render_segment_page"]

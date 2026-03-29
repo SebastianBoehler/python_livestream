@@ -28,6 +28,7 @@ Each show profile controls:
 
 - editorial framing
 - branding and studio labels
+- studio layout mode, for example `split` or `overlay`
 - TTS voice
 - source adapters
 - segment sequence and default durations

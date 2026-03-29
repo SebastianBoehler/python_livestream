@@ -75,6 +75,34 @@ class StudioPageTests(unittest.TestCase):
         self.assertIn("Top Setup", html)
         self.assertIn("Source Radar", html)
 
+    def test_render_segment_page_supports_overlay_layout(self) -> None:
+        show_config = _build_show_config()
+        show_config.studio.layout_mode = "overlay"
+        brief = SegmentBrief(
+            segment_template=SegmentTemplate(
+                kind="headline",
+                label="Market Open",
+                instructions="Lead",
+                duration_seconds=120,
+            ),
+            segment_index=0,
+            target_duration_seconds=120,
+            source_snapshots=(),
+        )
+        with tempfile.TemporaryDirectory() as temp_dir:
+            output_path = Path(temp_dir) / "segment.html"
+            render_segment_page(
+                show_config=show_config,
+                brief=brief,
+                script="Opening line. Follow up line. Final line.",
+                summary="HB sample",
+                output_path=output_path,
+            )
+            html = output_path.read_text(encoding="utf-8")
+
+        self.assertIn("layout-overlay", html)
+        self.assertIn("segment-headline", html)
+
     def test_render_intermission_page_mentions_music_break(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             output_path = Path(temp_dir) / "intermission.html"

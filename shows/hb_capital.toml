@@ -1,0 +1,81 @@
+show_id = "hb_capital"
+title = "HB Capital Live Desk"
+tagline = "A branded crypto market stream built around the HB Capital terminal."
+host_name = "HB Capital Desk"
+host_role = "Crypto macro and market structure anchor"
+description = "A live crypto news format that keeps the HB Capital livestream page visible on program while layered overlays frame the current setup, next catalysts, and source-driven commentary."
+base_prompt = "Cover the most consequential crypto and macro developments from the last 24 hours for traders watching the HB Capital terminal. Explain what changed, why it matters, and what to watch next."
+llm_system_instruction = """
+You are anchoring HB Capital's crypto livestream.
+Sound sharp, analytical, and market-aware.
+Use the source digest as the working newsroom brief and keep the commentary useful for active traders.
+Prefer concrete developments, policy shifts, flow changes, and positioning cues over vague headlines.
+"""
+tts_voice = "Charon"
+
+[branding]
+primary_color = "#a9f48b"
+accent_color = "#f6c35c"
+background_start = "#03080f"
+background_end = "#121f2a"
+card_background = "rgba(6, 12, 22, 0.74)"
+text_color = "#f7fbff"
+muted_text_color = "#98afc4"
+
+[studio]
+label = "HB Capital Control Room"
+strapline = "Overlay-led crypto desk with live terminal context"
+ticker_prefix = "HB Wire"
+iframe_url = "${STREAM_URL}"
+layout_mode = "overlay"
+
+[[sources]]
+kind = "rss"
+name = "Google News Crypto"
+url = "https://news.google.com/rss/search?q=crypto+bitcoin+ethereum+when:1d&hl=en-US&gl=US&ceid=US:en"
+limit = 5
+prompt_hint = "Use these items to surface fresh crypto headlines and company actions."
+
+[[sources]]
+kind = "rss"
+name = "Google News Macro"
+url = "https://news.google.com/rss/search?q=fed+rates+inflation+macro+when:1d&hl=en-US&gl=US&ceid=US:en"
+limit = 4
+prompt_hint = "Use these items for macro spillovers that can move crypto positioning."
+
+[[sources]]
+kind = "webpage"
+name = "HB Capital Livestream"
+url = "${STREAM_URL}"
+max_chars = 1600
+prompt_hint = "Use the HB Capital livestream page as the on-screen terminal context and pick up any visible cues."
+
+[[sources]]
+kind = "manual"
+name = "Editorial Guardrails"
+text = "Keep the segment grounded in price structure, catalysts, and positioning. Frame each package like a live desk handoff, not a generic explainer."
+prompt_hint = "These are HB Capital editorial rules."
+
+[[segments]]
+kind = "headline"
+label = "Market Open"
+instructions = "Lead with the single clearest market setup, then connect it to the two most consequential crypto or macro catalysts."
+duration_seconds = 180
+
+[[segments]]
+kind = "deep_dive"
+label = "Desk Drilldown"
+instructions = "Use the live terminal context to go deeper on flow, positioning, rotation, or policy spillovers."
+duration_seconds = 180
+
+[[segments]]
+kind = "analysis"
+label = "Terminal Pulse"
+instructions = "Translate the current setup into practical watch points, likely scenarios, and what traders should monitor next."
+duration_seconds = 165
+
+[[segments]]
+kind = "recap"
+label = "Close Notes"
+instructions = "Close with a concise recap of the active setup, the risk to that view, and the next catalyst on deck."
+duration_seconds = 150

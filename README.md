@@ -28,6 +28,7 @@ Each show profile defines:
 
 Included examples:
 
+- `shows/hb_capital.toml`
 - `shows/crypto_markets.toml`
 - `shows/ai_roundup.toml`
 - `shows/creator_watch.toml`
@@ -76,7 +77,7 @@ Common settings:
 
 ```dotenv
 YOUTUBE_STREAM_KEY=<your-youtube-stream-key>
-SHOW_ID=crypto_markets
+SHOW_ID=hb_capital
 STREAM_URL=https://example.com
 SEGMENT_BUFFER_SIZE=3
 STREAM_CAPTURE_BACKEND=playwright
@@ -92,6 +93,7 @@ Notes:
 - `SHOW_CONFIG_PATH` can point to any custom TOML file
 - `STREAM_URL` is only required if your selected show profile references it
 - `NEWS_SEGMENT_SECONDS` is still supported as a global duration override
+- `hb_capital` uses an overlay-first studio layout built to keep the HB livestream page visible on program
 
 Provider credentials depend on which services you use:
 
@@ -168,6 +170,7 @@ label = "Live Desk"
 strapline = "Source-driven coverage"
 ticker_prefix = "Radar"
 iframe_url = ""
+layout_mode = "split"
 
 [[sources]]
 kind = "rss"

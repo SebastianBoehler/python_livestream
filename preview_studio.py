@@ -4,7 +4,10 @@
 from __future__ import annotations
 
 import re
+import os
 from pathlib import Path
+
+from dotenv import load_dotenv
 
 from broadcast.studio_page import (
     render_intermission_page,
@@ -21,6 +24,7 @@ PREVIEW_ROOT = PROJECT_ROOT / "runtime" / "studio_preview"
 
 
 def main() -> None:
+    load_dotenv(override=False)
     show_configs = tuple(_load_show_configs())
     PREVIEW_ROOT.mkdir(parents=True, exist_ok=True)
     sample_snapshots = _sample_snapshots()
@@ -39,13 +43,13 @@ def main() -> None:
 def _load_show_configs() -> list[ShowConfig]:
     configs: list[ShowConfig] = []
     for show_file in sorted((PROJECT_ROOT / "shows").glob("*.toml")):
+        env = dict(os.environ)
+        env["SHOW_CONFIG_PATH"] = str(show_file)
+        env.setdefault("STREAM_URL", "https://example.com")
         configs.append(
             load_show_config(
                 project_root=PROJECT_ROOT,
-                env={
-                    "SHOW_CONFIG_PATH": str(show_file),
-                    "STREAM_URL": "https://example.com",
-                },
+                env=env,
             )
         )
     return configs

@@ -22,6 +22,7 @@ class StudioConfig:
     strapline: str
     ticker_prefix: str
     iframe_url: str = ""
+    layout_mode: str = "split"
 
 
 @dataclass(slots=True)
