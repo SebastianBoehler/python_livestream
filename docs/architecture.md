@@ -28,7 +28,8 @@ Each show profile controls:
 
 - editorial framing
 - branding and studio labels
-- studio layout mode, for example `split` or `overlay`
+- a default studio layout mode, for example `split` or `overlay`
+- per-segment scene overrides, for example `clean-feed` or `transition`
 - TTS voice
 - source adapters
 - segment sequence and default durations
@@ -47,6 +48,12 @@ Instead, each prepared segment gets its own generated studio page with:
 - source cards from the fetched digest
 - a running ticker assembled from source headlines
 - an optional iframe reference panel
+
+The layout layer can now switch scene styles per segment. The current HB Capital profile uses:
+
+- `overlay` for the branded desk composition
+- `clean-feed` for the raw HB Capital livestream page without channel chrome
+- `transition` for short branded handoffs and interstitial moments
 
 The browser capture backend still handles the final visual feed, but the visual composition is now controlled locally.
 
@@ -88,6 +95,7 @@ The router now forwards both a system instruction and a user prompt so each show
 These settings matter most:
 
 - `SHOW_ID`: selects a bundled show profile
+- default bundled show id: `hb_capital`
 - `SHOW_CONFIG_PATH`: points to any custom TOML profile
 - `NEWS_SEGMENT_SECONDS`: optional global duration override for all segment types
 - `SEGMENT_BUFFER_SIZE`: larger queue increases resilience

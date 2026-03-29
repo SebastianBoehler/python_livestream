@@ -2,7 +2,7 @@
 
 Python Livestream Toolkit automates a YouTube livestream by collecting topic-specific source material, generating spoken scripts with an LLM, rendering narration with TTS, composing a branded local studio page, and publishing continuously through FFmpeg.
 
-The runtime is built around a buffered producer-consumer pipeline so research, narration, and playout can overlap cleanly. It now supports reusable show profiles, which makes it useful for crypto, AI, creator economy, or any niche that can be expressed as a set of sources plus an editorial format.
+The runtime is built around a buffered producer-consumer pipeline so research, narration, and playout can overlap cleanly. It now ships with an HB Capital crypto desk profile and supports reusable show configs for any niche that can be expressed as a set of sources plus an editorial format.
 
 ## What It Does
 
@@ -24,14 +24,12 @@ Each show profile defines:
 - host voice and branding
 - source adapters
 - studio labels and optional iframe reference panel
-- segment rundown, for example headline, deep dive, and recap
+- scene modes such as `overlay`, `clean-feed`, and `transition`
+- segment rundown, for example headline, live feed, deep dive, and recap
 
-Included examples:
+Bundled profile:
 
 - `shows/hb_capital.toml`
-- `shows/crypto_markets.toml`
-- `shows/ai_roundup.toml`
-- `shows/creator_watch.toml`
 
 ## Capture Modes
 
@@ -93,7 +91,7 @@ Notes:
 - `SHOW_CONFIG_PATH` can point to any custom TOML file
 - `STREAM_URL` is only required if your selected show profile references it
 - `NEWS_SEGMENT_SECONDS` is still supported as a global duration override
-- `hb_capital` uses an overlay-first studio layout built to keep the HB livestream page visible on program
+- `hb_capital` uses an HB Capital scene pack with overlay desk shots, clean-feed terminal views, and branded transitions
 
 Provider credentials depend on which services you use:
 
@@ -107,12 +105,6 @@ Provider credentials depend on which services you use:
 
 ```bash
 python stream_url.py
-```
-
-### Switch to a different show
-
-```bash
-SHOW_ID=ai_roundup python stream_url.py
 ```
 
 ### Use a custom show file
@@ -188,6 +180,7 @@ kind = "headline"
 label = "Top Setup"
 instructions = "Open with the biggest development."
 duration_seconds = 180
+scene_mode = "overlay"
 ```
 
 ## Docker
