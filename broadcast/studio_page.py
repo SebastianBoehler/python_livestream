@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import re
-from html import escape
+from html import escape, unescape
 from pathlib import Path
 from typing import Any
 
@@ -31,7 +31,7 @@ def render_segment_page(
         segment_kind=brief.segment_template.kind,
         segment_label=brief.segment_template.label,
         headline=headline,
-        key_points=_script_sentences(script)[:3],
+        key_points=_segment_key_points(script, scene_mode),
         source_cards=_render_source_cards(brief.source_snapshots),
         ticker_items=brief.ticker_items or (headline,),
         iframe_markup=_render_iframe(show_config.studio.iframe_url, scene_mode),
@@ -131,23 +131,28 @@ def _write_page(
 
 def _ticker_track(ticker_items: tuple[str, ...]) -> str:
     ticker_markup = " <span class='ticker-divider'>//</span> ".join(
-        escape(item) for item in ticker_items if item
+        escape(_plain_text(item)) for item in ticker_items if item
     )
     return f"{ticker_markup} <span class='ticker-divider'>//</span> {ticker_markup}"
 
 
 def _render_source_cards(source_snapshots: tuple[SourceSnapshot, ...]) -> str:
     parts: list[str] = []
-    for snapshot in source_snapshots[:4]:
+    for snapshot in source_snapshots[:3]:
         if not snapshot.items:
             continue
         lead = snapshot.items[0]
+        item_title = _truncate(_plain_text(lead.title or snapshot.name), 72)
+        item_summary = _truncate(
+            _plain_text(lead.summary or "Fresh items collected for this segment."),
+            132,
+        )
         parts.extend(
             [
                 "<div class='source-card'>",
                 f"<div class='name'>{escape(snapshot.name)}</div>",
-                f"<div class='item-title'>{escape(lead.title or snapshot.name)}</div>",
-                f"<div class='item-summary'>{escape(lead.summary or 'Fresh items collected for this segment.')}</div>",
+                f"<div class='item-title'>{escape(item_title)}</div>",
+                f"<div class='item-summary'>{escape(item_summary)}</div>",
                 "</div>",
             ]
         )
@@ -179,6 +184,13 @@ def _initials(value: str) -> str:
     return "".join(parts[:2]) or "HB"
 
 
+def _segment_key_points(script: str, scene_mode: str) -> tuple[str, ...]:
+    key_points = _script_sentences(script)
+    if _normalize_layout_mode(scene_mode) == "overlay":
+        return key_points[:2]
+    return key_points[:3]
+
+
 def _script_sentences(script: str) -> tuple[str, ...]:
     cleaned = " ".join(script.split())
     if not cleaned:
@@ -196,6 +208,19 @@ def _script_sentences(script: str) -> tuple[str, ...]:
 
 def _slug(value: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", value.strip().lower()).strip("-")
+
+
+def _plain_text(value: str) -> str:
+    normalized = unescape(value or "")
+    without_tags = re.sub(r"<[^>]+>", " ", normalized)
+    return re.sub(r"\s+", " ", without_tags).strip()
+
+
+def _truncate(value: str, limit: int) -> str:
+    if len(value) <= limit:
+        return value
+    clipped = value[: limit - 1].rstrip()
+    return f"{clipped}..."
 
 
 __all__ = ["render_intermission_page", "render_preview_index", "render_segment_page"]

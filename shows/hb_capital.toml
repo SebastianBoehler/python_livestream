@@ -15,13 +15,13 @@ Treat the show like a continuous live desk with scene handoffs, short resets, an
 tts_voice = "Charon"
 
 [branding]
-primary_color = "#a9f48b"
-accent_color = "#f6c35c"
-background_start = "#03080f"
-background_end = "#121f2a"
-card_background = "rgba(6, 12, 22, 0.74)"
-text_color = "#f7fbff"
-muted_text_color = "#98afc4"
+primary_color = "#171717"
+accent_color = "#b48a3f"
+background_start = "#f8f7f4"
+background_end = "#eef2f6"
+card_background = "rgba(255, 255, 255, 0.82)"
+text_color = "#171717"
+muted_text_color = "#6b7280"
 
 [studio]
 label = "HB Capital Control Room"

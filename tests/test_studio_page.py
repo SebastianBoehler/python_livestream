@@ -107,6 +107,7 @@ class StudioPageTests(unittest.TestCase):
 
         self.assertIn("layout-overlay", html)
         self.assertIn("segment-headline", html)
+        self.assertEqual(html.count("<li>"), 2)
 
     def test_render_segment_page_supports_clean_feed_scene_override(self) -> None:
         show_config = _build_show_config()
@@ -136,6 +137,45 @@ class StudioPageTests(unittest.TestCase):
 
         self.assertIn("layout-clean-feed", html)
         self.assertIn("https://example.com/live", html)
+
+    def test_render_segment_page_strips_html_from_source_cards(self) -> None:
+        brief = SegmentBrief(
+            segment_template=SegmentTemplate(
+                kind="headline",
+                label="Top Setup",
+                instructions="Lead",
+                duration_seconds=120,
+            ),
+            segment_index=0,
+            target_duration_seconds=120,
+            source_snapshots=(
+                SourceSnapshot(
+                    name="Feed",
+                    kind="rss",
+                    prompt_hint="",
+                    items=(
+                        SourceItem(
+                            title="<a href='https://example.com'>Fresh headline</a>",
+                            summary="<a href='https://example.com'>Fresh summary</a> with follow-up detail.",
+                        ),
+                    ),
+                ),
+            ),
+        )
+        with tempfile.TemporaryDirectory() as temp_dir:
+            output_path = Path(temp_dir) / "segment.html"
+            render_segment_page(
+                show_config=_build_show_config(),
+                brief=brief,
+                script="Fresh headline. Detail one. Detail two.",
+                summary="Fresh headline",
+                output_path=output_path,
+            )
+            html = output_path.read_text(encoding="utf-8")
+
+        self.assertIn("Fresh headline", html)
+        self.assertIn("Fresh summary with follow-up detail.", html)
+        self.assertNotIn("&lt;a href=", html)
 
     def test_render_intermission_page_mentions_music_break(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

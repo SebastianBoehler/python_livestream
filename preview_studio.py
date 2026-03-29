@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import re
 import os
+import shutil
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -26,6 +27,8 @@ PREVIEW_ROOT = PROJECT_ROOT / "runtime" / "studio_preview"
 def main() -> None:
     load_dotenv(override=False)
     show_configs = tuple(_load_show_configs())
+    if PREVIEW_ROOT.exists():
+        shutil.rmtree(PREVIEW_ROOT)
     PREVIEW_ROOT.mkdir(parents=True, exist_ok=True)
     sample_snapshots = _sample_snapshots()
     preview_manifest = []
