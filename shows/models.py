@@ -46,6 +46,7 @@ class SegmentTemplate:
     label: str
     instructions: str
     duration_seconds: int
+    scene_mode: str = ""
 
 
 @dataclass(slots=True)

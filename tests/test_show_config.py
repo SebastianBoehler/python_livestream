@@ -49,6 +49,7 @@ kind = "headline"
 label = "Top Setup"
 instructions = "Lead"
 duration_seconds = 120
+scene_mode = "transition"
 """.strip(),
                 encoding="utf-8",
             )
@@ -62,6 +63,7 @@ duration_seconds = 120
         self.assertEqual(config.studio.iframe_url, "https://example.com")
         self.assertEqual(config.sources[0].text, "Stay concrete.")
         self.assertEqual(config.segment_plan[0].duration_seconds, 120)
+        self.assertEqual(config.segment_plan[0].scene_mode, "transition")
 
 
 if __name__ == "__main__":

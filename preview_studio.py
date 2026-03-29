@@ -45,7 +45,6 @@ def _load_show_configs() -> list[ShowConfig]:
     for show_file in sorted((PROJECT_ROOT / "shows").glob("*.toml")):
         env = dict(os.environ)
         env["SHOW_CONFIG_PATH"] = str(show_file)
-        env.setdefault("STREAM_URL", "https://example.com")
         configs.append(
             load_show_config(
                 project_root=PROJECT_ROOT,
@@ -90,6 +89,7 @@ def _generate_show_preview(
                 "kind": segment_template.kind,
                 "label": segment_template.label,
                 "duration_seconds": segment_template.duration_seconds,
+                "scene_mode": segment_template.scene_mode or show_config.studio.layout_mode,
                 "summary": segment_template.instructions,
                 "preview_path": f"./{show_config.show_id}/{preview_filename}",
                 "status": "live" if segment_index == 0 else "queued",
@@ -108,6 +108,7 @@ def _generate_show_preview(
             "kind": "intermission",
             "label": "Music Break",
             "duration_seconds": 20,
+            "scene_mode": "transition",
             "summary": "Short reset block between prepared segments while the next package is assembled.",
             "preview_path": f"./{show_config.show_id}/{intermission_filename}",
             "status": "queued",
@@ -132,32 +133,32 @@ def _generate_show_preview(
 def _sample_snapshots() -> tuple[SourceSnapshot, ...]:
     return (
         SourceSnapshot(
-            name="Google News",
+            name="Crypto Wire",
             kind="rss",
             prompt_hint="Use this for the latest developments.",
             items=(
                 SourceItem(
-                    title="Lead story rotates into focus",
-                    summary="A fresh source item is summarized here so the preview reflects the card layout and spacing.",
+                    title="Bitcoin pushes into a key liquidity pocket ahead of the next macro catalyst",
+                    summary="Fresh crypto wire copy fills the right rail so the preview reflects the density and pacing of a live market desk.",
                     url="https://example.com/story-1",
                     published_at="2026-03-29T09:00:00Z",
                 ),
                 SourceItem(
-                    title="Secondary angle adds context",
-                    summary="Another source headline appears in the ticker and source digest.",
+                    title="Rates and dollar positioning stay in focus as crypto traders reset intraday risk",
+                    summary="Secondary wire copy keeps the ticker moving and gives the overlay cards something realistic to display.",
                     url="https://example.com/story-2",
                     published_at="2026-03-29T09:20:00Z",
                 ),
             ),
         ),
         SourceSnapshot(
-            name="Operator Notes",
+            name="HB Desk Notes",
             kind="manual",
             prompt_hint="These are editorial instructions.",
             items=(
                 SourceItem(
                     title="Editorial Guardrails",
-                    summary="Stay analytical, avoid filler, and explain why the current setup matters.",
+                    summary="Stay analytical, avoid filler, and frame every handoff like a real market desk rather than a generic explainer.",
                 ),
             ),
         ),

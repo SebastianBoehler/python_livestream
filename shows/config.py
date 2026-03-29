@@ -12,7 +12,7 @@ import tomllib
 from shows.models import SegmentTemplate, ShowBranding, ShowConfig, SourceConfig, StudioConfig
 
 
-DEFAULT_SHOW_ID = "crypto_markets"
+DEFAULT_SHOW_ID = "hb_capital"
 
 
 def load_show_config(*, project_root: str | Path, env: dict[str, str] | None = None) -> ShowConfig:

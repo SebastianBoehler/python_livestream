@@ -34,7 +34,12 @@ def _build_show_config() -> ShowConfig:
             text_color="#fff",
             muted_text_color="#ccc",
         ),
-        studio=StudioConfig(label="Desk", strapline="Signals", ticker_prefix="Ticker"),
+        studio=StudioConfig(
+            label="Desk",
+            strapline="Signals",
+            ticker_prefix="Ticker",
+            iframe_url="https://example.com/live",
+        ),
         sources=(),
         segment_plan=(),
     )
@@ -103,6 +108,35 @@ class StudioPageTests(unittest.TestCase):
         self.assertIn("layout-overlay", html)
         self.assertIn("segment-headline", html)
 
+    def test_render_segment_page_supports_clean_feed_scene_override(self) -> None:
+        show_config = _build_show_config()
+        show_config.studio.layout_mode = "overlay"
+        brief = SegmentBrief(
+            segment_template=SegmentTemplate(
+                kind="live_feed",
+                label="Terminal Live",
+                instructions="Stay close to the feed.",
+                duration_seconds=120,
+                scene_mode="clean-feed",
+            ),
+            segment_index=0,
+            target_duration_seconds=120,
+            source_snapshots=(),
+        )
+        with tempfile.TemporaryDirectory() as temp_dir:
+            output_path = Path(temp_dir) / "segment.html"
+            render_segment_page(
+                show_config=show_config,
+                brief=brief,
+                script="Opening line. Follow up line. Final line.",
+                summary="HB terminal",
+                output_path=output_path,
+            )
+            html = output_path.read_text(encoding="utf-8")
+
+        self.assertIn("layout-clean-feed", html)
+        self.assertIn("https://example.com/live", html)
+
     def test_render_intermission_page_mentions_music_break(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             output_path = Path(temp_dir) / "intermission.html"
@@ -115,6 +149,7 @@ class StudioPageTests(unittest.TestCase):
 
         self.assertIn("Music Break", html)
         self.assertIn("30 seconds", html)
+        self.assertIn("layout-transition", html)
 
     def test_render_preview_index_includes_dashboard_controls(self) -> None:
         manifest = (

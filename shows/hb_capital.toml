@@ -1,15 +1,16 @@
 show_id = "hb_capital"
 title = "HB Capital Live Desk"
-tagline = "A branded crypto market stream built around the HB Capital terminal."
+tagline = "A crypto market channel built around the HB Capital terminal."
 host_name = "HB Capital Desk"
 host_role = "Crypto macro and market structure anchor"
-description = "A live crypto news format that keeps the HB Capital livestream page visible on program while layered overlays frame the current setup, next catalysts, and source-driven commentary."
+description = "A live crypto news channel format that rotates between branded desk scenes, a clean HB Capital live feed, and short transition states so the stream feels like a proper continuous market desk."
 base_prompt = "Cover the most consequential crypto and macro developments from the last 24 hours for traders watching the HB Capital terminal. Explain what changed, why it matters, and what to watch next."
 llm_system_instruction = """
 You are anchoring HB Capital's crypto livestream.
 Sound sharp, analytical, and market-aware.
 Use the source digest as the working newsroom brief and keep the commentary useful for active traders.
 Prefer concrete developments, policy shifts, flow changes, and positioning cues over vague headlines.
+Treat the show like a continuous live desk with scene handoffs, short resets, and direct references to what is on the terminal.
 """
 tts_voice = "Charon"
 
@@ -24,7 +25,7 @@ muted_text_color = "#98afc4"
 
 [studio]
 label = "HB Capital Control Room"
-strapline = "Overlay-led crypto desk with live terminal context"
+strapline = "Crypto market desk with live terminal and scene rotation"
 ticker_prefix = "HB Wire"
 iframe_url = "${STREAM_URL}"
 layout_mode = "overlay"
@@ -57,25 +58,50 @@ text = "Keep the segment grounded in price structure, catalysts, and positioning
 prompt_hint = "These are HB Capital editorial rules."
 
 [[segments]]
+kind = "transition"
+label = "Opening Bell"
+instructions = "Open the channel with the dominant market setup, the live tone of the desk, and the first catalyst the audience should care about."
+duration_seconds = 30
+scene_mode = "transition"
+
+[[segments]]
 kind = "headline"
 label = "Market Open"
-instructions = "Lead with the single clearest market setup, then connect it to the two most consequential crypto or macro catalysts."
+instructions = "Lead with the single clearest market setup, then connect it to the two most consequential crypto or macro catalysts visible on the desk."
 duration_seconds = 180
+scene_mode = "overlay"
+
+[[segments]]
+kind = "live_feed"
+label = "Terminal Live"
+instructions = "Stay close to the HB Capital live page and call out only the most important shift on tape, structure, or market narrative. Keep the read tight and observational."
+duration_seconds = 120
+scene_mode = "clean-feed"
 
 [[segments]]
 kind = "deep_dive"
 label = "Desk Drilldown"
 instructions = "Use the live terminal context to go deeper on flow, positioning, rotation, or policy spillovers."
 duration_seconds = 180
+scene_mode = "overlay"
+
+[[segments]]
+kind = "transition"
+label = "Catalyst Reset"
+instructions = "Bridge into the next block by naming the next catalyst, the risk to the current view, and whether the desk is leaning risk-on or risk-off."
+duration_seconds = 24
+scene_mode = "transition"
 
 [[segments]]
 kind = "analysis"
-label = "Terminal Pulse"
-instructions = "Translate the current setup into practical watch points, likely scenarios, and what traders should monitor next."
+label = "Flow Board"
+instructions = "Translate the current setup into practical watch points across majors, macro spillovers, and market structure so traders know what matters next."
 duration_seconds = 165
+scene_mode = "overlay"
 
 [[segments]]
 kind = "recap"
 label = "Close Notes"
 instructions = "Close with a concise recap of the active setup, the risk to that view, and the next catalyst on deck."
 duration_seconds = 150
+scene_mode = "overlay"

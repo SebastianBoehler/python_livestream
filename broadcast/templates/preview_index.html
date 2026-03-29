@@ -598,7 +598,7 @@
       if (live) {
         programFrame.src = live.preview_path;
         monitorLabel.textContent = `${show.title} / Program output`;
-        monitorKind.textContent = `${live.kind} / ${formatDuration(live.duration_seconds)}`;
+        monitorKind.textContent = `${live.kind} / ${formatSceneLabel(live.scene_mode)} / ${formatDuration(live.duration_seconds)}`;
         liveName.textContent = live.label;
         liveMeta.textContent = `${show.host_name} · ${show.host_role}`;
         liveSummary.textContent = live.summary;
@@ -606,7 +606,7 @@
 
       if (selected) {
         selectedName.textContent = selected.label;
-        selectedMeta.textContent = `${selected.kind} · ${formatDuration(selected.duration_seconds)}`;
+        selectedMeta.textContent = `${selected.kind} · ${formatSceneLabel(selected.scene_mode)} · ${formatDuration(selected.duration_seconds)}`;
         selectedSummary.textContent = selected.summary;
         openPreviewLink.href = selected.preview_path;
       }
@@ -655,6 +655,7 @@
             <div class="queue-topline">
               <span class="queue-label">${escapeHtml(item.label)}</span>
               <span class="queue-kind">${escapeHtml(item.kind)}</span>
+              <span class="queue-kind">${escapeHtml(formatSceneLabel(item.scene_mode))}</span>
             </div>
             <p class="queue-summary">${escapeHtml(item.summary)}</p>
           </div>
@@ -740,6 +741,12 @@
       const mins = Math.floor(seconds / 60);
       const secs = seconds % 60;
       return `${mins}:${secs.toString().padStart(2, "0")}`;
+    }
+
+    function formatSceneLabel(sceneMode) {
+      return (sceneMode || "default")
+        .replaceAll("-", " ")
+        .replaceAll("_", " ");
     }
 
     function escapeHtml(value) {

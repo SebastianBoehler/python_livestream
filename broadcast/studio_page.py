@@ -12,6 +12,7 @@ from shows.models import SegmentBrief, ShowConfig, SourceSnapshot
 
 
 TEMPLATE_PATH = Path(__file__).parent / "templates" / "studio.html"
+STYLE_TEMPLATE_PATH = Path(__file__).parent / "templates" / "studio.css"
 PREVIEW_INDEX_TEMPLATE_PATH = Path(__file__).parent / "templates" / "preview_index.html"
 
 
@@ -24,6 +25,7 @@ def render_segment_page(
     output_path: str | Path,
 ) -> Path:
     headline = summary or brief.segment_template.label
+    scene_mode = brief.segment_template.scene_mode or show_config.studio.layout_mode
     return _write_page(
         show_config=show_config,
         segment_kind=brief.segment_template.kind,
@@ -32,7 +34,8 @@ def render_segment_page(
         key_points=_script_sentences(script)[:3],
         source_cards=_render_source_cards(brief.source_snapshots),
         ticker_items=brief.ticker_items or (headline,),
-        iframe_markup=_render_iframe(show_config.studio.iframe_url),
+        iframe_markup=_render_iframe(show_config.studio.iframe_url, scene_mode),
+        scene_mode=scene_mode,
         output_path=output_path,
     )
 
@@ -56,6 +59,7 @@ def render_intermission_page(
         source_cards="<div class='source-card compact'>Intermission visuals active.</div>",
         ticker_items=("Music break", "Collecting fresh sources", "Preparing next segment"),
         iframe_markup="",
+        scene_mode="transition",
         output_path=output_path,
     )
 
@@ -83,16 +87,19 @@ def _write_page(
     source_cards: str,
     ticker_items: tuple[str, ...],
     iframe_markup: str,
+    scene_mode: str,
     output_path: str | Path,
 ) -> Path:
     output = Path(output_path)
     output.parent.mkdir(parents=True, exist_ok=True)
     template = TEMPLATE_PATH.read_text(encoding="utf-8")
+    style_block = STYLE_TEMPLATE_PATH.read_text(encoding="utf-8")
     ticker_track = _ticker_track(ticker_items)
     segment_kind_class = _slug(segment_kind) if segment_kind else "segment"
-    layout_mode = _normalize_layout_mode(show_config.studio.layout_mode)
+    layout_mode = _normalize_layout_mode(scene_mode)
     replacements = {
         "{{PAGE_TITLE}}": escape(f"{show_config.title} Studio"),
+        "{{STYLE_BLOCK}}": style_block,
         "{{BODY_CLASS}}": f"layout-{layout_mode} segment-{segment_kind_class}",
         "{{PRIMARY_COLOR}}": show_config.branding.primary_color,
         "{{ACCENT_COLOR}}": show_config.branding.accent_color,
@@ -149,8 +156,8 @@ def _render_source_cards(source_snapshots: tuple[SourceSnapshot, ...]) -> str:
     return "\n".join(parts)
 
 
-def _render_iframe(iframe_url: str) -> str:
-    if not iframe_url:
+def _render_iframe(iframe_url: str, layout_mode: str) -> str:
+    if not iframe_url or _normalize_layout_mode(layout_mode) == "transition":
         return ""
     escaped_url = escape(iframe_url, quote=True)
     return (
@@ -161,8 +168,8 @@ def _render_iframe(iframe_url: str) -> str:
 
 
 def _normalize_layout_mode(value: str) -> str:
-    normalized = (value or "split").strip().lower()
-    if normalized in {"overlay", "split"}:
+    normalized = (value or "split").strip().lower().replace("_", "-").replace(" ", "-")
+    if normalized in {"overlay", "split", "clean-feed", "transition"}:
         return normalized
     return "split"
 
