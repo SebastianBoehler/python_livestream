@@ -8,8 +8,6 @@ from google.genai import types
 from google.genai.types import (
     FunctionCallingConfig,
     FunctionCallingConfigMode,
-    GenerateContentConfig,
-    Tool,
     ToolConfig,
 )
 
@@ -37,9 +35,10 @@ def initialize_gemini_client():
     logger.info("Google Generative AI API initialized successfully")
     return client
 
-# update signature to only take in prompt
 def generate(
-    prompt: str = "latest finance and crypto news and macro economic landscape"
+    prompt: str = "latest finance and crypto news and macro economic landscape",
+    *,
+    system_instruction: str | None = None,
 ) -> str:
     """
     Generate text using Google Gemini with Google Search grounding.
@@ -62,41 +61,16 @@ def generate(
         # Initialize API
         client = initialize_gemini_client()
         
-        # Create system instruction for news anchor persona
-        system_instruction = """
-        You are a professional news anchor delivering a comprehensive and well-researched news broadcast. 
-        Your responses should be formatted as a transcript that will be converted to speech using TTS.
-        The TTS does **NOT** support emotions but you can add pauses by using . , ; ; characters to emphasize certain parts of the text.
-        
-        To provide the most accurate and up-to-date information:
-        - Feel free to use multiple tool calls and grounding searches to gather comprehensive context
-        - Research multiple sources to verify facts and present balanced perspectives
-        - Incorporate relevant economic data, market trends, and expert opinions
-        - Use real-time information whenever possible
-        
-        Guidelines for your news broadcast:
-        1. Use clear, engaging language suitable for a spoken news broadcast
-        2. Structure your response with a compelling introduction, detailed main points, and thoughtful conclusion
-        3. Maintain a professional, informative tone throughout
-        4. Do NOT include any formatting that wouldn't be spoken (like bullet points or markdown)
-        5. Do NOT use phrases like "vibey music" or any audio/visual directions
-        6. Do NOT include timestamps, sound effects, or music cues
-        7. Do NOT use phrases like "back to you" or references to other anchors
-        8. Keep sentences concise and easy to speak naturally
-        9. Use natural transitions between topics
-        10. End with a brief sign-off like a real news anchor would
-        
-        Your goal is to deliver a comprehensive, accurate, and engaging news report that sounds natural when spoken.
-
-        Stay way from using ``` or any other formatting and do not include any citations or references.
-        Further do not include exact asset prices or any other exact numbers, only use them as a reference.
+        default_system_instruction = """
+        You are writing a spoken livestream segment.
+        Keep the copy natural for TTS, avoid markdown and citations, and prioritize concrete developments over filler.
+        Use search grounding when it materially improves accuracy.
         """
         
-        # Create prompt for news generation
         current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         full_prompt = (
-            f"Create a comprehensive news report about {prompt}. Current time: {current_time}. "
-            "Make sure to cover only news from the last 24 hours."
+            f"Create a spoken livestream segment using this brief:\n\n{prompt}\n\n"
+            f"Current time: {current_time}. Use recent information when available."
         )
         
         # Configure Google Search as a tool
@@ -108,7 +82,7 @@ def generate(
         generate_config = types.GenerateContentConfig(
             temperature=0.7,
             max_output_tokens=1024,
-            system_instruction=system_instruction,
+            system_instruction=system_instruction or default_system_instruction,
             tools=[google_search_tool],
             # forcing function calling with mode ANY
             tool_config=ToolConfig(
@@ -119,7 +93,7 @@ def generate(
             response_mime_type='text/plain'
         )
         
-        logger.info("Generating news content")
+        logger.info("Generating segment content")
         
         # Generate content
         response = client.models.generate_content(
@@ -130,7 +104,7 @@ def generate(
         
         # Extract and return the generated text
         if response and hasattr(response, 'text'):
-            logger.info("News content generated successfully")
+            logger.info("Segment content generated successfully")
             
             # Check if Google Search grounding was used
             # we want to always be grounded in search
@@ -147,7 +121,7 @@ def generate(
             return response.text
         else:
             logger.warning("Empty response received from Gemini API")
-            return "No news content could be generated at this time."
+            return "No segment content could be generated at this time."
             
     except Exception as e:
         logger.error(f"Error generating news content: {str(e)}")

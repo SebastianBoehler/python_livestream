@@ -1,26 +1,23 @@
-"""OpenRouter news generation helper."""
+"""OpenRouter script generation helper."""
 
 from __future__ import annotations
 
-import json
 import logging
 import os
 from typing import Any
 
 import requests
 
-from llm.prompts import NEWS_SYSTEM_INSTRUCTION
-
 logger = logging.getLogger(__name__)
 
 
-def generate(prompt: str) -> str:
-    """Generate a news bulletin using OpenRouter's OpenAI-compatible API."""
+def generate(prompt: str, *, system_instruction: str | None = None) -> str:
+    """Generate a spoken segment using OpenRouter's OpenAI-compatible API."""
     api_key = os.getenv("OPENROUTER_API_KEY")
     if not api_key:
         raise ValueError("OPENROUTER_API_KEY not found in environment variables")
 
-    payload = _build_payload(prompt)
+    payload = _build_payload(prompt, system_instruction=system_instruction)
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
@@ -52,13 +49,13 @@ def generate(prompt: str) -> str:
     return content.strip()
 
 
-def _build_payload(prompt: str) -> dict[str, Any]:
+def _build_payload(prompt: str, *, system_instruction: str | None) -> dict[str, Any]:
     configured_models = _split_csv(os.getenv("OPENROUTER_MODELS"))
     model = configured_models[0] if configured_models else os.getenv("OPENROUTER_MODEL", "openrouter/auto")
     payload: dict[str, Any] = {
         "model": model,
         "messages": [
-            {"role": "system", "content": NEWS_SYSTEM_INSTRUCTION},
+            {"role": "system", "content": system_instruction or ""},
             {"role": "user", "content": prompt},
         ],
         "temperature": 0.4,
@@ -107,4 +104,3 @@ def _split_csv(value: str | None) -> list[str]:
     if not value:
         return []
     return [item.strip() for item in value.split(",") if item.strip()]
-

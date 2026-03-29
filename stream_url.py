@@ -2,6 +2,8 @@ import asyncio
 import logging
 import os
 from concurrent.futures import ThreadPoolExecutor
+from functools import partial
+from pathlib import Path
 
 from dotenv import load_dotenv
 from playwright.async_api import async_playwright
@@ -12,7 +14,10 @@ from broadcast.memory import BroadcastMemoryStore
 from broadcast.pipeline import prepare_segment
 from broadcast.streaming import stream_segment
 from broadcast.virtual_display import managed_virtual_display
-from tts.gemini import generate as generate_tts_audio
+from shows.briefs import build_segment_brief
+from shows.config import load_show_config
+from shows.sources import fetch_show_sources
+from tts.gemini import generate_with_voice
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
@@ -25,14 +30,6 @@ def _resolve_ffmpeg_path() -> str:
     return "ffmpeg"
 
 
-def _news_prompt() -> str:
-    return (
-        "Latest news from the last 24h about crypto and blockchain."
-        " Cover macro, policy, market structure, major company actions, and mindshare shifts."
-        " Be analytical and focus on what matters for markets."
-    )
-
-
 def _resolve_inter_segment_seconds() -> int:
     configured_music_break = os.getenv("INTER_SEGMENT_MUSIC_SECONDS")
     if configured_music_break:
@@ -40,19 +37,70 @@ def _resolve_inter_segment_seconds() -> int:
     return int(os.getenv("INTER_SEGMENT_DELAY_SECONDS", "0"))
 
 
+def _resolve_default_segment_duration() -> int | None:
+    configured_duration = os.getenv("NEWS_SEGMENT_SECONDS")
+    if configured_duration:
+        return int(configured_duration)
+    configured_minutes = os.getenv("NEWS_INTERVAL_MINUTES")
+    if configured_minutes:
+        return int(configured_minutes) * 60
+    return None
+
+
+def _build_tts_generator(voice_name: str):
+    return partial(generate_with_voice, voice_name=voice_name)
+
+
+def _prepare_show_segment(
+    *,
+    show_config,
+    segment_index: int,
+    memory_store: BroadcastMemoryStore,
+    tts_dir: Path,
+    studio_pages_dir: Path,
+    tts_generator,
+    ffmpeg_path: str,
+    default_segment_duration: int | None,
+    tts_parallelism: int,
+    tts_max_chars_per_chunk: int,
+):
+    source_snapshots = fetch_show_sources(show_config)
+    brief = build_segment_brief(
+        show_config=show_config,
+        segment_index=segment_index,
+        source_snapshots=source_snapshots,
+        default_duration_seconds=default_segment_duration,
+    )
+    return prepare_segment(
+        show_config=show_config,
+        brief=brief,
+        memory_store=memory_store,
+        tts_dir=tts_dir,
+        studio_pages_dir=studio_pages_dir,
+        tts_generator=tts_generator,
+        ffmpeg_path=ffmpeg_path,
+        tts_parallelism=tts_parallelism,
+        tts_max_chars_per_chunk=tts_max_chars_per_chunk,
+    )
+
+
 async def _produce_segments(
     *,
+    show_config,
     segment_queue: asyncio.Queue,
     stop_event: asyncio.Event,
     executor: ThreadPoolExecutor,
     memory_store: BroadcastMemoryStore,
-    tts_dir: str,
+    tts_dir: Path,
+    studio_pages_dir: Path,
     ffmpeg_path: str,
-    target_duration_seconds: int,
+    default_segment_duration: int | None,
     tts_parallelism: int,
     tts_max_chars_per_chunk: int,
 ) -> None:
     loop = asyncio.get_running_loop()
+    segment_index = 0
+    tts_generator = _build_tts_generator(show_config.tts_voice)
     while not stop_event.is_set():
         if segment_queue.full():
             await asyncio.sleep(1)
@@ -60,20 +108,24 @@ async def _produce_segments(
         try:
             segment = await loop.run_in_executor(
                 executor,
-                lambda: prepare_segment(
-                    news_prompt=_news_prompt(),
+                lambda: _prepare_show_segment(
+                    show_config=show_config,
+                    segment_index=segment_index,
                     memory_store=memory_store,
                     tts_dir=tts_dir,
-                    tts_generator=generate_tts_audio,
+                    studio_pages_dir=studio_pages_dir,
+                    tts_generator=tts_generator,
                     ffmpeg_path=ffmpeg_path,
-                    target_duration_seconds=target_duration_seconds,
+                    default_segment_duration=default_segment_duration,
                     tts_parallelism=tts_parallelism,
                     tts_max_chars_per_chunk=tts_max_chars_per_chunk,
                 ),
             )
             await segment_queue.put(segment)
+            segment_index += 1
             logger.info(
-                "Queued segment %s from %s (%ss audio). Queue size: %s",
+                "Queued %s segment %s from %s (%ss audio). Queue size: %s",
+                segment.kind,
                 segment.segment_id,
                 segment.provider_name,
                 round(segment.actual_audio_duration_seconds, 1),
@@ -84,14 +136,20 @@ async def _produce_segments(
             await asyncio.sleep(5)
 
 
+async def _load_segment_page(page, studio_page_path: Path | None) -> None:
+    if studio_page_path is None:
+        return
+    await page.goto(studio_page_path.resolve().as_uri(), wait_until="load")
+    await page.bring_to_front()
+
+
 async def run_livestream() -> None:
     load_dotenv(override=False)
+    project_root = Path.cwd()
     stream_key = os.getenv("YOUTUBE_STREAM_KEY")
-    url = os.getenv("STREAM_URL")
+    show_config = load_show_config(project_root=project_root)
     capture_backend = load_capture_backend_config()
-    segment_duration_seconds = int(
-        os.getenv("NEWS_SEGMENT_SECONDS", str(int(os.getenv("NEWS_INTERVAL_MINUTES", "15")) * 60))
-    )
+    default_segment_duration = _resolve_default_segment_duration()
     segment_buffer_size = int(os.getenv("SEGMENT_BUFFER_SIZE", "3"))
     tts_parallelism = int(os.getenv("TTS_PARALLELISM", "3"))
     tts_max_chars_per_chunk = int(os.getenv("TTS_MAX_CHARS_PER_CHUNK", "450"))
@@ -100,19 +158,18 @@ async def run_livestream() -> None:
     if not stream_key:
         logger.error("YOUTUBE_STREAM_KEY not provided")
         return
-    if not url:
-        logger.error("STREAM_URL not provided")
-        return
 
-    background_music_path = os.path.join(os.getcwd(), "audio", "song.mp3")
-    if not os.path.exists(background_music_path):
+    background_music_path = project_root / "audio" / "song.mp3"
+    if not background_music_path.exists():
         logger.error("Background music not found at %s", background_music_path)
         return
 
     ffmpeg_path = _resolve_ffmpeg_path()
-    tts_dir = os.path.join(os.getcwd(), "audio", "tts")
-    os.makedirs(tts_dir, exist_ok=True)
-    memory_store = BroadcastMemoryStore(os.path.join(os.getcwd(), "memory"))
+    tts_dir = project_root / "audio" / "tts"
+    studio_pages_dir = project_root / "runtime" / "studio_pages" / show_config.show_id
+    memory_store = BroadcastMemoryStore(project_root / "memory" / show_config.show_id)
+    tts_dir.mkdir(parents=True, exist_ok=True)
+    studio_pages_dir.mkdir(parents=True, exist_ok=True)
 
     segment_queue: asyncio.Queue = asyncio.Queue(maxsize=segment_buffer_size)
     stop_event = asyncio.Event()
@@ -127,8 +184,9 @@ async def run_livestream() -> None:
             )
             page = await browser.new_page(viewport={"width": capture_backend.width, "height": capture_backend.height})
             logger.info(
-                "Streaming from %s with capture backend=%s orientation=%s aspect=%s fps=%s size=%sx%s",
-                url,
+                "Running show=%s (%s) with capture backend=%s orientation=%s aspect=%s fps=%s size=%sx%s",
+                show_config.title,
+                show_config.show_id,
                 capture_backend.name,
                 capture_backend.orientation,
                 capture_backend.aspect_ratio_label,
@@ -138,18 +196,18 @@ async def run_livestream() -> None:
             )
             if virtual_display is not None:
                 logger.info("Using isolated virtual display %s", virtual_display.display)
-            print(f"Streaming from {url}")
-            await page.goto(url)
-            await page.bring_to_front()
+
             producer_task = asyncio.create_task(
                 _produce_segments(
+                    show_config=show_config,
                     segment_queue=segment_queue,
                     stop_event=stop_event,
                     executor=executor,
                     memory_store=memory_store,
                     tts_dir=tts_dir,
+                    studio_pages_dir=studio_pages_dir,
                     ffmpeg_path=ffmpeg_path,
-                    target_duration_seconds=segment_duration_seconds,
+                    default_segment_duration=default_segment_duration,
                     tts_parallelism=tts_parallelism,
                     tts_max_chars_per_chunk=tts_max_chars_per_chunk,
                 )
@@ -159,10 +217,11 @@ async def run_livestream() -> None:
                 while True:
                     segment = await segment_queue.get()
                     logger.info("Starting playout for segment %s", segment.segment_id)
+                    await _load_segment_page(page, segment.studio_page_path)
                     await stream_segment(
                         page=page,
                         stream_key=stream_key,
-                        background_music_path=background_music_path,
+                        background_music_path=str(background_music_path),
                         segment=segment,
                         capture_backend=capture_backend,
                         ffmpeg_path=ffmpeg_path,
@@ -179,11 +238,14 @@ async def run_livestream() -> None:
                             duration_seconds=inter_segment_seconds,
                             tts_dir=tts_dir,
                             ffmpeg_path=ffmpeg_path,
+                            show_config=show_config,
+                            studio_pages_dir=studio_pages_dir,
                         )
+                        await _load_segment_page(page, intermission_segment.studio_page_path)
                         await stream_segment(
                             page=page,
                             stream_key=stream_key,
-                            background_music_path=background_music_path,
+                            background_music_path=str(background_music_path),
                             segment=intermission_segment,
                             capture_backend=capture_backend,
                             ffmpeg_path=ffmpeg_path,

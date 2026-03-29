@@ -8,8 +8,11 @@ class PreparedSegment:
 
     segment_id: str
     kind: str
+    title: str
+    summary: str
     script: str
     provider_name: str
     audio_path: Path
     target_duration_seconds: int
     actual_audio_duration_seconds: float
+    studio_page_path: Path | None = None

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-from dataclasses import asdict
 from datetime import UTC, datetime
 from hashlib import sha1
 from pathlib import Path
@@ -51,13 +50,15 @@ class BroadcastMemoryStore:
         return "\n".join(context_lines)
 
     def record_segment(self, segment: PreparedSegment) -> None:
-        if segment.kind != "news":
+        if segment.kind == "intermission":
             return
         aired_at = datetime.now(UTC).isoformat()
-        summary = self._summarize_script(segment.script)
+        summary = segment.summary or self._summarize_script(segment.script)
         entry = {
             "segment_id": segment.segment_id,
             "aired_at": aired_at,
+            "kind": segment.kind,
+            "title": segment.title,
             "provider_name": segment.provider_name,
             "summary": summary,
             "script_hash": sha1(segment.script.encode("utf-8")).hexdigest(),
@@ -120,7 +121,7 @@ class BroadcastMemoryStore:
         if entries:
             for entry in entries:
                 lines.append(
-                    f"- {entry['aired_at']} [{entry['provider_name']}] {entry['summary']}"
+                    f"- {entry['aired_at']} [{entry.get('kind', 'segment')} / {entry['provider_name']}] {entry['summary']}"
                 )
         else:
             lines.append("- No segments have been aired yet.")

@@ -1,0 +1,59 @@
+show_id = "creator_watch"
+title = "Creator Watch"
+tagline = "Platform changes, monetization updates, and creator economy signals."
+host_name = "Creator Watch Desk"
+host_role = "Platform and media anchor"
+description = "A stream for creators and media operators tracking platform policy changes, monetization shifts, social distribution trends, and audience strategy."
+base_prompt = "Cover the last 24 hours in the creator economy. Focus on platform changes, monetization levers, distribution shifts, and creator business implications."
+llm_system_instruction = """
+You are a creator economy anchor.
+Speak with the tone of an operator briefing creators, agencies, and media teams.
+Turn policy or product changes into plain-language business implications.
+"""
+tts_voice = "Kore"
+
+[branding]
+primary_color = "#ffcf7f"
+accent_color = "#98f2dc"
+background_start = "#1a0d12"
+background_end = "#182133"
+card_background = "rgba(23, 13, 20, 0.78)"
+text_color = "#fff9f2"
+muted_text_color = "#d0c4ba"
+
+[studio]
+label = "Creator Economy Desk"
+strapline = "Operator notes for media teams and solo creators"
+ticker_prefix = "Signals"
+iframe_url = ""
+
+[[sources]]
+kind = "rss"
+name = "Google News Creator Economy"
+url = "https://news.google.com/rss/search?q=creator+economy+OR+youtube+creator+OR+tiktok+creator+when:1d&hl=en-US&gl=US&ceid=US:en"
+limit = 5
+prompt_hint = "Use this for platform, ad, and creator business updates."
+
+[[sources]]
+kind = "manual"
+name = "Editorial Guardrails"
+text = "Prioritize updates a creator could act on today: posting formats, monetization, policy, or distribution."
+prompt_hint = "These are show-level editorial rules."
+
+[[segments]]
+kind = "headline"
+label = "Platform Shift"
+instructions = "Lead with the platform or monetization shift that could change creator behavior fastest."
+duration_seconds = 170
+
+[[segments]]
+kind = "analysis"
+label = "Operator Take"
+instructions = "Explain what the update means for small teams, agencies, or solo creators."
+duration_seconds = 170
+
+[[segments]]
+kind = "recap"
+label = "Move Next"
+instructions = "Close with a concise next-step summary: what to test, what to monitor, and what to ignore."
+duration_seconds = 150

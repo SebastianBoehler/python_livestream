@@ -13,6 +13,8 @@ class MemoryStoreTests(unittest.TestCase):
             segment = PreparedSegment(
                 segment_id="intermission_1",
                 kind="intermission",
+                title="Music Break",
+                summary="Music-only reset.",
                 script="",
                 provider_name="music",
                 audio_path=Path(temp_dir) / "gap.wav",
@@ -28,7 +30,9 @@ class MemoryStoreTests(unittest.TestCase):
             store = BroadcastMemoryStore(temp_dir)
             segment = PreparedSegment(
                 segment_id="segment_1",
-                kind="news",
+                kind="headline",
+                title="Top Setup",
+                summary="Markets moved on fresh macro headlines.",
                 script="Markets moved on fresh macro headlines.",
                 provider_name="xai",
                 audio_path=Path(temp_dir) / "news.wav",

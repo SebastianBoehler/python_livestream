@@ -174,5 +174,7 @@ async def stream_segment(
         process.stdin.close()
     if segment.audio_path.exists():
         segment.audio_path.unlink()
+    if segment.studio_page_path and segment.studio_page_path.exists():
+        segment.studio_page_path.unlink()
     logger.info("Segment finished")
     return total_duration
