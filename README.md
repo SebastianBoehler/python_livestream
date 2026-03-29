@@ -1,19 +1,36 @@
 # Python Livestream Toolkit
 
-Python Livestream Toolkit automates a news-style YouTube livestream from a web page or visual source, generates fresh bulletin scripts with an LLM, renders narration with TTS, mixes background music, and publishes continuously through FFmpeg.
+Python Livestream Toolkit automates a YouTube livestream by collecting topic-specific source material, generating spoken scripts with an LLM, rendering narration with TTS, composing a branded local studio page, and publishing continuously through FFmpeg.
 
-The project is optimized around a buffered broadcast pipeline rather than a single blocking loop. That makes it suitable for continuous crypto, macro, or market commentary streams where research, narration, and playout need to overlap cleanly.
+The runtime is built around a buffered producer-consumer pipeline so research, narration, and playout can overlap cleanly. It now supports reusable show profiles, which makes it useful for crypto, AI, creator economy, or any niche that can be expressed as a set of sources plus an editorial format.
 
 ## What It Does
 
-- Streams a URL or visual source directly to YouTube Live
-- Buffers prepared news segments ahead of playout
-- Persists recent coverage memory to reduce repetition
+- Loads a reusable show profile from `shows/*.toml`
+- Pulls source material from `rss`, `webpage`, `json`, or `manual` adapters
+- Builds a local browser-based studio page with headline, source cards, ticker, and branding
+- Buffers prepared audio segments ahead of playout
+- Persists rolling memory per show to reduce repetition
 - Routes script generation across xAI, Gemini, or OpenRouter
 - Supports stable screenshot capture, macOS screen capture, and isolated virtual-display capture for containers
-- Mixes continuous background music under narrated bulletins
+- Mixes continuous background music under narrated segments
 - Supports optional music-only breaks between segments
-- Runs well on low-cost Linux VMs with the default slim container image
+
+## Show Profiles
+
+Each show profile defines:
+
+- topic and editorial framing
+- host voice and branding
+- source adapters
+- studio labels and optional iframe reference panel
+- segment rundown, for example headline, deep dive, and recap
+
+Included examples:
+
+- `shows/crypto_markets.toml`
+- `shows/ai_roundup.toml`
+- `shows/creator_watch.toml`
 
 ## Capture Modes
 
@@ -29,12 +46,12 @@ If you do not want to stream your real desktop, use `virtual-screen` on Linux or
 
 The runtime is split into small modules:
 
-1. `llm/` generates bulletin scripts
-2. `tts/` renders narration
-3. `broadcast/pipeline.py` prepares queued segments
-4. `broadcast/streaming.py` handles FFmpeg playout
-5. `broadcast/memory.py` records prior coverage context
-6. `broadcast/intermission.py` inserts optional music-only gaps
+1. `shows/` loads show configs, source adapters, and segment briefs
+2. `llm/` builds prompts and routes script generation
+3. `tts/` renders narration
+4. `broadcast/pipeline.py` prepares queued segments and local studio pages
+5. `broadcast/streaming.py` handles FFmpeg playout
+6. `broadcast/memory.py` records prior coverage context per show
 
 More detail lives in [docs/architecture.md](/Users/sebastianboehler/Documents/GitHub/python_livestream/docs/architecture.md).
 
@@ -59,8 +76,8 @@ Common settings:
 
 ```dotenv
 YOUTUBE_STREAM_KEY=<your-youtube-stream-key>
+SHOW_ID=crypto_markets
 STREAM_URL=https://example.com
-NEWS_SEGMENT_SECONDS=180
 SEGMENT_BUFFER_SIZE=3
 STREAM_CAPTURE_BACKEND=playwright
 STREAM_ORIENTATION=landscape
@@ -68,6 +85,13 @@ STREAM_FPS=12
 INTER_SEGMENT_MUSIC_SECONDS=0
 NEWS_LLM_PROVIDER_ORDER=xai
 ```
+
+Notes:
+
+- `SHOW_ID` selects a profile in `shows/`
+- `SHOW_CONFIG_PATH` can point to any custom TOML file
+- `STREAM_URL` is only required if your selected show profile references it
+- `NEWS_SEGMENT_SECONDS` is still supported as a global duration override
 
 Provider credentials depend on which services you use:
 
@@ -83,13 +107,25 @@ Provider credentials depend on which services you use:
 python stream_url.py
 ```
 
+### Switch to a different show
+
+```bash
+SHOW_ID=ai_roundup python stream_url.py
+```
+
+### Use a custom show file
+
+```bash
+SHOW_CONFIG_PATH=/absolute/path/to/my_show.toml python stream_url.py
+```
+
 ### Run portrait mode
 
 ```bash
 STREAM_ORIENTATION=portrait python stream_url.py
 ```
 
-### Add a music-only break between bulletins
+### Add a music-only break between segments
 
 ```bash
 INTER_SEGMENT_MUSIC_SECONDS=20 python stream_url.py
@@ -104,6 +140,52 @@ STREAM_CAPTURE_BACKEND=virtual-screen STREAM_FPS=25 python stream_url.py
 ```
 
 `virtual-screen` is Linux-only and is the recommended mode for long-running container or VM deployment.
+
+## Show Config Example
+
+```toml
+show_id = "my_show"
+title = "Niche Desk"
+tagline = "Automated coverage for one clear audience."
+host_name = "Desk"
+host_role = "Operator anchor"
+description = "Explain what changed and why it matters."
+base_prompt = "Cover the most relevant developments from the last 24 hours."
+llm_system_instruction = "You are a sharp and concise anchor."
+tts_voice = "Charon"
+
+[branding]
+primary_color = "#93f5d8"
+accent_color = "#f6c35c"
+background_start = "#04141a"
+background_end = "#11172a"
+card_background = "rgba(8, 18, 31, 0.78)"
+text_color = "#f4f7fb"
+muted_text_color = "#9bb4c8"
+
+[studio]
+label = "Live Desk"
+strapline = "Source-driven coverage"
+ticker_prefix = "Radar"
+iframe_url = ""
+
+[[sources]]
+kind = "rss"
+name = "Google News Topic"
+url = "https://news.google.com/rss/search?q=my+topic+when:1d&hl=en-US&gl=US&ceid=US:en"
+limit = 5
+
+[[sources]]
+kind = "manual"
+name = "Editorial Guardrails"
+text = "Stay concrete and explain implications."
+
+[[segments]]
+kind = "headline"
+label = "Top Setup"
+instructions = "Open with the biggest development."
+duration_seconds = 180
+```
 
 ## Docker
 
@@ -140,9 +222,10 @@ docker build -f Dockerfile.gpu -t python-livestream-gpu .
 ## Repository Layout
 
 ```text
-broadcast/   streaming, capture backends, memory, intermissions
+broadcast/   streaming, capture backends, memory, intermissions, studio pages
 docs/        architecture notes
 llm/         provider routing and prompt generation
+shows/       show configs, source adapters, segment brief helpers
 tts/         TTS backends and chunking
 tests/       unit tests for core streaming behavior
 ```

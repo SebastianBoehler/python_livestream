@@ -2,19 +2,56 @@
 
 ## Current Pipeline
 
-The livestream now uses a buffered producer-consumer flow:
+The livestream uses a buffered producer-consumer flow:
 
-1. Research + script generation through `llm/router.py`
-2. Chunked TTS generation through `tts/chunked.py`
-3. Prepared segment buffering through `broadcast/pipeline.py`
-4. Continuous playout through `broadcast/streaming.py`
-5. Coverage memory persistence through `broadcast/memory.py`
+1. Load a show profile from `shows/*.toml`
+2. Fetch current source material through `shows/sources.py`
+3. Build a segment brief through `shows/briefs.py`
+4. Generate a spoken script through `llm/router.py`
+5. Render chunked TTS audio through `tts/chunked.py`
+6. Render a local HTML studio page through `broadcast/studio_page.py`
+7. Queue the prepared segment through `broadcast/pipeline.py`
+8. Stream continuously through `broadcast/streaming.py`
 
 This keeps playout independent from upstream model or TTS latency as long as the queue stays filled.
 
+## Show Layer
+
+The generalization layer now lives in `shows/`:
+
+- `config.py` loads TOML show profiles
+- `sources.py` resolves `rss`, `webpage`, `json`, and `manual` sources
+- `briefs.py` rotates through the configured segment rundown
+- `models.py` defines the shared show, source, and brief data structures
+
+Each show profile controls:
+
+- editorial framing
+- branding and studio labels
+- TTS voice
+- source adapters
+- segment sequence and default durations
+
+This makes the runtime reusable for multiple niches without changing the main code path.
+
+## Studio Page
+
+The stream no longer depends on capturing an arbitrary external page directly.
+
+Instead, each prepared segment gets its own generated studio page with:
+
+- show branding
+- current segment label
+- headline and key talking points
+- source cards from the fetched digest
+- a running ticker assembled from source headlines
+- an optional iframe reference panel
+
+The browser capture backend still handles the final visual feed, but the visual composition is now controlled locally.
+
 ## Memory Layer
 
-Runtime memory is stored under `memory/`:
+Runtime memory is stored under `memory/<show_id>/`:
 
 - `session_index.jsonl`: one line per aired segment
 - `topic_state.json`: repeated-topic counters and last-seen timestamps
@@ -43,26 +80,17 @@ OPENROUTER_PROVIDER_ORDER=openai,together
 OPENROUTER_PLUGINS=web
 ```
 
-## ADK Scaffold
-
-`broadcast/adk_newsroom.py` contains an optional `google-adk` workflow scaffold:
-
-- `ParallelAgent` for research desks
-- `SequentialAgent` for dedupe, ranking, and script writing
-
-Install ADK when you want to move from the current lightweight router to explicit multi-agent orchestration:
-
-```bash
-pip install google-adk
-```
+The router now forwards both a system instruction and a user prompt so each show can define its own host persona and editorial rules.
 
 ## Throughput Tuning
 
 These settings matter most:
 
-- `NEWS_SEGMENT_SECONDS`: shorter segments increase freshness
+- `SHOW_ID`: selects a bundled show profile
+- `SHOW_CONFIG_PATH`: points to any custom TOML profile
+- `NEWS_SEGMENT_SECONDS`: optional global duration override for all segment types
 - `SEGMENT_BUFFER_SIZE`: larger queue increases resilience
-- `INTER_SEGMENT_MUSIC_SECONDS`: inserts a music-only gap after each aired bulletin
+- `INTER_SEGMENT_MUSIC_SECONDS`: inserts a music-only gap after each aired segment
 - `TTS_PARALLELISM`: faster script-to-audio conversion
 - `TTS_MAX_CHARS_PER_CHUNK`: smaller chunks reduce single-call latency
 - `STREAM_FPS`: safe at `12` with Playwright capture on the current setup, higher for screen mode if the machine can sustain it
@@ -71,9 +99,7 @@ These settings matter most:
 
 ## Vertical / Portrait Streaming
 
-YouTube’s current live-stream guidance says vertical streams give viewers on mobile a full-screen viewing experience and can be surfaced in the Shorts feed. It also supports running horizontal and vertical versions at the same time with separate stream keys in Live Control Room dual-stream mode.
-
-This project now supports portrait output directly:
+Portrait output is supported directly:
 
 ```dotenv
 STREAM_ORIENTATION=portrait
@@ -103,11 +129,11 @@ STREAM_ORIENTATION=portrait STREAM_CAPTURE_BACKEND=virtual-screen STREAM_FPS=25 
 Current scope:
 
 - single portrait stream output is supported in this repo
-- true YouTube dual-stream publishing with separate horizontal and vertical stream keys is not yet implemented here
+- true dual-orientation publishing to YouTube is not yet implemented here
 
 ## 25 FPS Path
 
-The current Playwright screenshot backend is not the right long-term path for `25 FPS`, so the project now includes two high-fps paths:
+The current Playwright screenshot backend is not the right long-term path for `25 FPS`, so the project includes two high-fps paths:
 
 ```dotenv
 STREAM_CAPTURE_BACKEND=screen
@@ -145,22 +171,9 @@ STREAM_VIDEO_ENCODER=libx264
 This is the recommended path for 24/7 VM or container operation because it does not expose the host desktop and does not depend on macOS-only video tooling.
 It is Linux-only and will fail fast on macOS.
 
-## Container Strategy
-
-The default container image is now intentionally optimized for continuous streaming rather than local-model inference:
-
-- base image: `python:3.11-slim-bookworm`
-- Python deps: `requirements-stream.txt`
-- browser isolation: Playwright Chromium inside Xvfb
-- encoder default on Linux: `libx264`
-
-This keeps the baseline VM/container requirement materially lower than the previous CUDA-heavy image.
-
-If you need GPU-hosted local TTS models, use [Dockerfile.gpu](/Users/sebastianboehler/Documents/GitHub/python_livestream/Dockerfile.gpu) instead of the default [Dockerfile](/Users/sebastianboehler/Documents/GitHub/python_livestream/Dockerfile).
-
 ## Inter-Segment Music
 
-You can now insert an explicit music-only break between prepared news segments:
+You can insert an explicit music-only break between prepared segments:
 
 ```dotenv
 INTER_SEGMENT_MUSIC_SECONDS=20
@@ -168,48 +181,10 @@ INTER_SEGMENT_MUSIC_SECONDS=20
 
 Behavior:
 
-1. the aired news segment finishes
+1. the aired segment finishes
 2. a short silent WAV is generated locally
-3. that silent track is streamed while the regular background music continues
-4. the next queued news segment starts after the break
+3. a dedicated intermission studio page is rendered
+4. that silent track is streamed while the regular background music continues
+5. the next queued segment starts after the break
 
 `INTER_SEGMENT_DELAY_SECONDS` is also accepted as a legacy alias, but `INTER_SEGMENT_MUSIC_SECONDS` is the clearer setting name.
-
-List available screen devices on macOS:
-
-```bash
-ffmpeg -f avfoundation -list_devices true -i ""
-```
-
-Recommended comparison workflow:
-
-1. Run the stable path
-
-```bash
-STREAM_CAPTURE_BACKEND=playwright STREAM_FPS=12 python stream_url.py
-```
-
-2. Run the macOS display-capture path
-
-```bash
-STREAM_CAPTURE_BACKEND=screen STREAM_FPS=25 python stream_url.py
-```
-
-3. Run the isolated Linux/container path
-
-```bash
-STREAM_CAPTURE_BACKEND=virtual-screen STREAM_FPS=25 python stream_url.py
-```
-
-4. Compare the logs:
-
-- `FFmpeg progress: ... speed=... latency=...`
-- `FFmpeg process stats: cpu=... rss=...`
-- `Frames captured: ...` for the Playwright backend
-
-Interpretation:
-
-- `speed >= 1.0x` means FFmpeg is keeping up with realtime
-- lower `latency` is better
-- lower CPU at the same quality is better
-- if `screen` mode holds `25 FPS` with `speed >= 1.0x`, it is the better ingest path
