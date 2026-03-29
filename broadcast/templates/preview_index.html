@@ -1,0 +1,760 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Studio Dashboard Preview</title>
+  <style>
+    :root {
+      --background: #061019;
+      --background-alt: #101d2f;
+      --panel: rgba(8, 16, 27, 0.76);
+      --panel-soft: rgba(255, 255, 255, 0.05);
+      --panel-line: rgba(255, 255, 255, 0.08);
+      --text: #f5f8fc;
+      --muted: #97adc2;
+      --success: #7ef2b3;
+      --warning: #f6c35c;
+      --danger: #ff8c78;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Avenir Next", "Segoe UI", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(126, 242, 179, 0.12), transparent 20%),
+        radial-gradient(circle at right center, rgba(246, 195, 92, 0.12), transparent 22%),
+        linear-gradient(155deg, var(--background), var(--background-alt));
+    }
+    button, a, input { font: inherit; }
+    .shell {
+      width: min(1380px, calc(100% - 40px));
+      margin: 0 auto;
+      padding: 28px 0 40px;
+    }
+    .topbar {
+      display: grid;
+      grid-template-columns: minmax(0, 1.3fr) minmax(280px, 0.7fr);
+      gap: 24px;
+      align-items: end;
+      margin-bottom: 24px;
+    }
+    .eyebrow {
+      margin: 0 0 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      font-size: 12px;
+      color: var(--warning);
+    }
+    h1 {
+      margin: 0;
+      font-size: clamp(38px, 6vw, 88px);
+      line-height: 0.94;
+      letter-spacing: -0.05em;
+      max-width: 10ch;
+    }
+    .lede {
+      margin: 16px 0 0;
+      max-width: 38rem;
+      color: var(--muted);
+      font-size: 18px;
+      line-height: 1.55;
+    }
+    .status-band {
+      display: grid;
+      gap: 14px;
+      padding: 18px 20px;
+      border-radius: 24px;
+      background: var(--panel);
+      border: 1px solid var(--panel-line);
+      backdrop-filter: blur(18px);
+      box-shadow: 0 18px 44px rgba(0, 0, 0, 0.22);
+    }
+    .status-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+    .metric {
+      padding: 12px 14px;
+      border-radius: 18px;
+      background: var(--panel-soft);
+    }
+    .metric-label {
+      display: block;
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    .metric-value {
+      font-size: 24px;
+      line-height: 1;
+    }
+    .dashboard {
+      display: grid;
+      grid-template-columns: minmax(0, 1.45fr) minmax(360px, 0.78fr);
+      gap: 20px;
+      min-height: 72vh;
+    }
+    .panel {
+      border-radius: 30px;
+      border: 1px solid var(--panel-line);
+      background: var(--panel);
+      backdrop-filter: blur(18px);
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.24);
+    }
+    .stage-panel {
+      padding: 18px;
+      display: grid;
+      grid-template-rows: auto auto minmax(0, 1fr);
+      gap: 16px;
+    }
+    .stage-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      padding: 6px 4px 0;
+    }
+    .stage-title {
+      display: grid;
+      gap: 5px;
+    }
+    .stage-title p,
+    .stage-title h2 {
+      margin: 0;
+    }
+    .stage-title p {
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      font-size: 11px;
+    }
+    .stage-title h2 {
+      font-size: 28px;
+    }
+    .live-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      border-radius: 999px;
+      background: rgba(126, 242, 179, 0.12);
+      color: var(--success);
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      font-size: 11px;
+    }
+    .live-pill::before {
+      content: "";
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: currentColor;
+      box-shadow: 0 0 0 8px rgba(126, 242, 179, 0.12);
+    }
+    .show-switcher {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      padding: 0 4px;
+    }
+    .show-tab {
+      border: 0;
+      border-radius: 999px;
+      padding: 12px 16px;
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      cursor: pointer;
+      transition: transform 160ms ease, background 160ms ease, border-color 160ms ease;
+    }
+    .show-tab:hover,
+    .show-tab.is-active {
+      transform: translateY(-1px);
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(255, 255, 255, 0.18);
+    }
+    .show-tab.is-active {
+      color: #07111b;
+      font-weight: 600;
+    }
+    .program-shell {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 320px;
+      gap: 16px;
+      min-height: 0;
+    }
+    .program-monitor {
+      border-radius: 24px;
+      overflow: hidden;
+      background: #04070c;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      min-height: 560px;
+      display: grid;
+      grid-template-rows: auto 1fr;
+    }
+    .monitor-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 14px;
+      background: rgba(255, 255, 255, 0.04);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      font-size: 12px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    iframe {
+      width: 100%;
+      height: 100%;
+      min-height: 0;
+      border: 0;
+      background: #04070c;
+    }
+    .sidebar-stack {
+      display: grid;
+      grid-template-rows: auto auto minmax(0, 1fr);
+      gap: 12px;
+    }
+    .info-card,
+    .queue-card {
+      border-radius: 22px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      padding: 16px;
+    }
+    .info-card h3,
+    .queue-card h3 {
+      margin: 0 0 10px;
+      font-size: 13px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .live-name {
+      margin: 0;
+      font-size: 28px;
+      line-height: 1.05;
+    }
+    .live-meta,
+    .queue-summary,
+    .queue-empty {
+      margin: 8px 0 0;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+    .control-actions {
+      display: grid;
+      gap: 10px;
+    }
+    .control-button {
+      display: inline-flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 48px;
+      padding: 0 16px;
+      border-radius: 16px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text);
+      text-decoration: none;
+      cursor: pointer;
+      transition: transform 160ms ease, background 160ms ease, border-color 160ms ease;
+    }
+    .control-button:hover {
+      transform: translateY(-1px);
+      background: rgba(255, 255, 255, 0.09);
+      border-color: rgba(255, 255, 255, 0.18);
+    }
+    .control-button--primary {
+      color: #081119;
+      font-weight: 700;
+      border-color: transparent;
+    }
+    .queue-list {
+      display: grid;
+      gap: 10px;
+      max-height: 100%;
+      overflow: auto;
+      padding-right: 4px;
+    }
+    .queue-item {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 12px;
+      align-items: center;
+      padding: 14px 14px;
+      border-radius: 18px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      background: rgba(255, 255, 255, 0.04);
+      cursor: grab;
+      transition: transform 160ms ease, background 160ms ease, border-color 160ms ease;
+    }
+    .queue-item:hover {
+      transform: translateY(-1px);
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(255, 255, 255, 0.1);
+    }
+    .queue-item.is-selected {
+      border-color: rgba(255, 255, 255, 0.18);
+      background: rgba(255, 255, 255, 0.1);
+    }
+    .queue-item.is-dragging {
+      opacity: 0.42;
+    }
+    .queue-rank {
+      width: 30px;
+      height: 30px;
+      display: inline-flex;
+      justify-content: center;
+      align-items: center;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .queue-main {
+      min-width: 0;
+      display: grid;
+      gap: 4px;
+    }
+    .queue-topline {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .queue-label {
+      font-size: 17px;
+      line-height: 1.2;
+    }
+    .queue-kind {
+      display: inline-flex;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--muted);
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+    }
+    .queue-duration {
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      white-space: nowrap;
+    }
+    .queue-summary {
+      font-size: 13px;
+      margin: 0;
+    }
+    .drag-note {
+      margin: 12px 2px 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+    .drop-target {
+      outline: 1px dashed rgba(255, 255, 255, 0.16);
+      outline-offset: 3px;
+    }
+    @media (max-width: 1160px) {
+      .dashboard,
+      .program-shell,
+      .topbar,
+      .status-grid {
+        grid-template-columns: 1fr;
+      }
+      .program-shell {
+        grid-template-rows: auto auto;
+      }
+      .program-monitor {
+        min-height: 460px;
+      }
+    }
+    @media (max-width: 720px) {
+      .shell { width: min(100% - 24px, 1380px); }
+      .stage-panel { padding: 14px; }
+      .program-monitor { min-height: 360px; }
+      .queue-item { grid-template-columns: auto 1fr; }
+      .queue-duration { grid-column: 2; }
+    }
+  </style>
+</head>
+<body>
+  <script id="preview-data" type="application/json">{{PREVIEW_DATA_JSON}}</script>
+  <main class="shell">
+    <section class="topbar">
+      <div>
+        <p class="eyebrow">Preview Control Room</p>
+        <h1>Run the rundown like a live desk.</h1>
+        <p class="lede">
+          This mock dashboard shows the active show feed, what is on deck, and a drag-to-reorder queue.
+          Use it to tune pacing and sequencing before you wire up the real operator controls.
+        </p>
+      </div>
+      <div class="status-band">
+        <div class="status-grid">
+          <div class="metric">
+            <span class="metric-label">Active show</span>
+            <span class="metric-value" id="metric-show-count">0</span>
+          </div>
+          <div class="metric">
+            <span class="metric-label">Queued items</span>
+            <span class="metric-value" id="metric-queue-count">0</span>
+          </div>
+          <div class="metric">
+            <span class="metric-label">Preview mode</span>
+            <span class="metric-value">Local</span>
+          </div>
+        </div>
+        <div class="show-switcher" id="show-switcher"></div>
+      </div>
+    </section>
+
+    <section class="dashboard">
+      <section class="panel stage-panel">
+        <div class="stage-header">
+          <div class="stage-title">
+            <p id="active-show-label">Show</p>
+            <h2 id="active-show-title">Preview</h2>
+          </div>
+          <div class="live-pill">On program</div>
+        </div>
+
+        <div class="program-shell">
+          <div class="program-monitor">
+            <div class="monitor-bar">
+              <span id="monitor-label">Program Output</span>
+              <span id="monitor-kind">Segment</span>
+            </div>
+            <iframe id="program-frame" title="Current live program preview"></iframe>
+          </div>
+
+          <div class="sidebar-stack">
+            <section class="info-card">
+              <h3>Now Live</h3>
+              <p class="live-name" id="live-name">Segment</p>
+              <p class="live-meta" id="live-meta">Host metadata</p>
+              <p class="queue-summary" id="live-summary">Segment summary</p>
+            </section>
+
+            <section class="info-card">
+              <h3>Selected Next</h3>
+              <p class="live-name" id="selected-name">Queue item</p>
+              <p class="live-meta" id="selected-meta">Timing</p>
+              <p class="queue-summary" id="selected-summary">Selection summary</p>
+            </section>
+
+            <section class="queue-card">
+              <h3>Controls</h3>
+              <div class="control-actions">
+                <button class="control-button control-button--primary" id="take-next-button" type="button">Take selected next</button>
+                <a class="control-button" id="open-preview-link" href="#" target="_blank" rel="noreferrer">Open selected in new tab</a>
+                <button class="control-button" id="reset-order-button" type="button">Reset rundown order</button>
+              </div>
+            </section>
+          </div>
+        </div>
+      </section>
+
+      <aside class="panel stage-panel">
+        <div class="stage-header">
+          <div class="stage-title">
+            <p>Queue</p>
+            <h2>Coming Up</h2>
+          </div>
+          <div class="live-pill" style="color: var(--warning); background: rgba(246, 195, 92, 0.12);">Drag to reorder</div>
+        </div>
+
+        <section class="queue-card" style="min-height: 0;">
+          <h3>Upcoming rundown</h3>
+          <div class="queue-list" id="queue-list"></div>
+          <p class="drag-note">
+            Drag queue items to resequence the rundown. Click a card to inspect it, then use “Take selected next” to push it live.
+          </p>
+        </section>
+      </aside>
+    </section>
+  </main>
+
+  <script>
+    const previewManifest = JSON.parse(document.getElementById("preview-data").textContent);
+    const queueList = document.getElementById("queue-list");
+    const showSwitcher = document.getElementById("show-switcher");
+    const activeShowLabel = document.getElementById("active-show-label");
+    const activeShowTitle = document.getElementById("active-show-title");
+    const monitorLabel = document.getElementById("monitor-label");
+    const monitorKind = document.getElementById("monitor-kind");
+    const programFrame = document.getElementById("program-frame");
+    const liveName = document.getElementById("live-name");
+    const liveMeta = document.getElementById("live-meta");
+    const liveSummary = document.getElementById("live-summary");
+    const selectedName = document.getElementById("selected-name");
+    const selectedMeta = document.getElementById("selected-meta");
+    const selectedSummary = document.getElementById("selected-summary");
+    const openPreviewLink = document.getElementById("open-preview-link");
+    const takeNextButton = document.getElementById("take-next-button");
+    const resetOrderButton = document.getElementById("reset-order-button");
+    const metricShowCount = document.getElementById("metric-show-count");
+    const metricQueueCount = document.getElementById("metric-queue-count");
+
+    const initialQueues = Object.fromEntries(
+      previewManifest.map((show) => [show.show_id, show.queue_items.map((item) => ({ ...item }))]),
+    );
+
+    const state = {
+      activeShowId: previewManifest[0]?.show_id || "",
+      selectedItemId: "",
+      queues: loadPersistedQueues(initialQueues),
+    };
+
+    function loadPersistedQueues(fallback) {
+      try {
+        const raw = window.localStorage.getItem("studio-preview-queues");
+        if (!raw) return fallback;
+        const persisted = JSON.parse(raw);
+        const hydrated = {};
+        for (const show of previewManifest) {
+          const initialItems = fallback[show.show_id];
+          const savedIds = Array.isArray(persisted[show.show_id]) ? persisted[show.show_id] : [];
+          const itemMap = new Map(initialItems.map((item) => [item.id, item]));
+          const ordered = [];
+          for (const itemId of savedIds) {
+            if (itemMap.has(itemId)) {
+              ordered.push({ ...itemMap.get(itemId) });
+              itemMap.delete(itemId);
+            }
+          }
+          for (const item of initialItems) {
+            if (itemMap.has(item.id)) {
+              ordered.push({ ...item });
+            }
+          }
+          hydrated[show.show_id] = ordered;
+        }
+        return hydrated;
+      } catch (error) {
+        return fallback;
+      }
+    }
+
+    function persistQueues() {
+      const payload = {};
+      for (const [showId, queue] of Object.entries(state.queues)) {
+        payload[showId] = queue.map((item) => item.id);
+      }
+      window.localStorage.setItem("studio-preview-queues", JSON.stringify(payload));
+    }
+
+    function activeShow() {
+      return previewManifest.find((show) => show.show_id === state.activeShowId) || previewManifest[0];
+    }
+
+    function activeQueue() {
+      return state.queues[state.activeShowId] || [];
+    }
+
+    function liveItem() {
+      return activeQueue()[0] || null;
+    }
+
+    function selectedQueueItem() {
+      const queue = activeQueue();
+      if (state.selectedItemId) {
+        const match = queue.find((item) => item.id === state.selectedItemId);
+        if (match) return match;
+      }
+      return queue[1] || queue[0] || null;
+    }
+
+    function render() {
+      const show = activeShow();
+      const queue = activeQueue();
+      const live = liveItem();
+      const selected = selectedQueueItem();
+
+      document.documentElement.style.setProperty("--active-primary", show.primary_color);
+      document.documentElement.style.setProperty("--active-accent", show.accent_color);
+      document.documentElement.style.setProperty("--active-card", show.card_background);
+
+      renderShowTabs(show.show_id);
+      renderQueue(queue.slice(1), selected?.id || "");
+
+      activeShowLabel.textContent = show.studio_label;
+      activeShowTitle.textContent = show.title;
+      metricShowCount.textContent = previewManifest.length.toString();
+      metricQueueCount.textContent = Math.max(queue.length - 1, 0).toString();
+
+      if (live) {
+        programFrame.src = live.preview_path;
+        monitorLabel.textContent = `${show.title} / Program output`;
+        monitorKind.textContent = `${live.kind} / ${formatDuration(live.duration_seconds)}`;
+        liveName.textContent = live.label;
+        liveMeta.textContent = `${show.host_name} · ${show.host_role}`;
+        liveSummary.textContent = live.summary;
+      }
+
+      if (selected) {
+        selectedName.textContent = selected.label;
+        selectedMeta.textContent = `${selected.kind} · ${formatDuration(selected.duration_seconds)}`;
+        selectedSummary.textContent = selected.summary;
+        openPreviewLink.href = selected.preview_path;
+      }
+
+      takeNextButton.disabled = !selected || selected.id === live?.id;
+      openPreviewLink.setAttribute("aria-disabled", selected ? "false" : "true");
+    }
+
+    function renderShowTabs(activeId) {
+      showSwitcher.innerHTML = "";
+      for (const show of previewManifest) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "show-tab" + (show.show_id === activeId ? " is-active" : "");
+        button.textContent = show.title;
+        button.style.background = show.show_id === activeId
+          ? `linear-gradient(135deg, ${show.primary_color}, ${show.accent_color})`
+          : "";
+        button.addEventListener("click", () => {
+          state.activeShowId = show.show_id;
+          state.selectedItemId = "";
+          render();
+        });
+        showSwitcher.appendChild(button);
+      }
+    }
+
+    function renderQueue(upcomingItems, selectedId) {
+      queueList.innerHTML = "";
+      if (!upcomingItems.length) {
+        const empty = document.createElement("p");
+        empty.className = "queue-empty";
+        empty.textContent = "No queued items remain for this show.";
+        queueList.appendChild(empty);
+        return;
+      }
+
+      upcomingItems.forEach((item, index) => {
+        const element = document.createElement("article");
+        element.className = "queue-item" + (item.id === selectedId ? " is-selected" : "");
+        element.draggable = true;
+        element.dataset.itemId = item.id;
+        element.innerHTML = `
+          <div class="queue-rank">${index + 1}</div>
+          <div class="queue-main">
+            <div class="queue-topline">
+              <span class="queue-label">${escapeHtml(item.label)}</span>
+              <span class="queue-kind">${escapeHtml(item.kind)}</span>
+            </div>
+            <p class="queue-summary">${escapeHtml(item.summary)}</p>
+          </div>
+          <div class="queue-duration">${formatDuration(item.duration_seconds)}</div>
+        `;
+
+        element.addEventListener("click", () => {
+          state.selectedItemId = item.id;
+          render();
+        });
+
+        element.addEventListener("dragstart", (event) => {
+          element.classList.add("is-dragging");
+          event.dataTransfer.setData("text/plain", item.id);
+        });
+
+        element.addEventListener("dragend", () => {
+          element.classList.remove("is-dragging");
+          for (const card of queueList.querySelectorAll(".queue-item")) {
+            card.classList.remove("drop-target");
+          }
+        });
+
+        element.addEventListener("dragover", (event) => {
+          event.preventDefault();
+          element.classList.add("drop-target");
+        });
+
+        element.addEventListener("dragleave", () => {
+          element.classList.remove("drop-target");
+        });
+
+        element.addEventListener("drop", (event) => {
+          event.preventDefault();
+          element.classList.remove("drop-target");
+          const draggedId = event.dataTransfer.getData("text/plain");
+          if (!draggedId || draggedId === item.id) return;
+          moveQueuedItem(draggedId, item.id);
+        });
+
+        queueList.appendChild(element);
+      });
+    }
+
+    function moveQueuedItem(draggedId, targetId) {
+      const queue = activeQueue();
+      const live = queue[0];
+      const upcoming = queue.slice(1);
+      const draggedIndex = upcoming.findIndex((item) => item.id === draggedId);
+      const targetIndex = upcoming.findIndex((item) => item.id === targetId);
+      if (draggedIndex === -1 || targetIndex === -1) return;
+      const [dragged] = upcoming.splice(draggedIndex, 1);
+      upcoming.splice(targetIndex, 0, dragged);
+      state.queues[state.activeShowId] = [live, ...upcoming];
+      state.selectedItemId = dragged.id;
+      persistQueues();
+      render();
+    }
+
+    function takeSelectedNext() {
+      const queue = activeQueue();
+      const live = queue[0];
+      const selected = selectedQueueItem();
+      if (!selected || !live || selected.id === live.id) return;
+      const selectedIndex = queue.findIndex((item) => item.id === selected.id);
+      if (selectedIndex <= 0) return;
+      const [nextLive] = queue.splice(selectedIndex, 1);
+      queue.push(live);
+      queue.unshift(nextLive);
+      state.selectedItemId = queue[1]?.id || "";
+      persistQueues();
+      render();
+    }
+
+    function resetOrder() {
+      state.queues[state.activeShowId] = initialQueues[state.activeShowId].map((item) => ({ ...item }));
+      state.selectedItemId = "";
+      persistQueues();
+      render();
+    }
+
+    function formatDuration(seconds) {
+      const mins = Math.floor(seconds / 60);
+      const secs = seconds % 60;
+      return `${mins}:${secs.toString().padStart(2, "0")}`;
+    }
+
+    function escapeHtml(value) {
+      return value
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
+    }
+
+    takeNextButton.addEventListener("click", takeSelectedNext);
+    resetOrderButton.addEventListener("click", resetOrder);
+
+    render();
+  </script>
+</body>
+</html>

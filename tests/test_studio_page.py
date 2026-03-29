@@ -2,7 +2,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from broadcast.studio_page import render_intermission_page, render_segment_page
+from broadcast.studio_page import render_intermission_page, render_preview_index, render_segment_page
 from shows.models import (
     SegmentBrief,
     SegmentTemplate,
@@ -87,6 +87,42 @@ class StudioPageTests(unittest.TestCase):
 
         self.assertIn("Music Break", html)
         self.assertIn("30 seconds", html)
+
+    def test_render_preview_index_includes_dashboard_controls(self) -> None:
+        manifest = (
+            {
+                "show_id": "test",
+                "title": "Test Show",
+                "tagline": "Signals",
+                "description": "Description",
+                "host_name": "Host",
+                "host_role": "Anchor",
+                "studio_label": "Desk",
+                "studio_strapline": "Signals",
+                "primary_color": "#000000",
+                "accent_color": "#111111",
+                "card_background": "rgba(0,0,0,0.6)",
+                "queue_items": [
+                    {
+                        "id": "test-1",
+                        "kind": "headline",
+                        "label": "Top Setup",
+                        "duration_seconds": 120,
+                        "summary": "Lead summary",
+                        "preview_path": "./test/segment-01.html",
+                        "status": "live",
+                    }
+                ],
+            },
+        )
+        with tempfile.TemporaryDirectory() as temp_dir:
+            output_path = Path(temp_dir) / "index.html"
+            render_preview_index(preview_manifest=manifest, output_path=output_path)
+            html = output_path.read_text(encoding="utf-8")
+
+        self.assertIn("Run the rundown like a live desk", html)
+        self.assertIn("Take selected next", html)
+        self.assertIn("test-1", html)
 
 
 if __name__ == "__main__":

@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
+import json
 from html import escape
 from pathlib import Path
+from typing import Any
 
 from shows.models import SegmentBrief, ShowConfig, SourceSnapshot
 
 
 TEMPLATE_PATH = Path(__file__).parent / "templates" / "studio.html"
+PREVIEW_INDEX_TEMPLATE_PATH = Path(__file__).parent / "templates" / "preview_index.html"
 
 
 def render_segment_page(
@@ -52,6 +55,19 @@ def render_intermission_page(
         iframe_markup="",
         output_path=output_path,
     )
+
+
+def render_preview_index(
+    *,
+    preview_manifest: tuple[dict[str, Any], ...],
+    output_path: str | Path,
+) -> Path:
+    output = Path(output_path)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    template = PREVIEW_INDEX_TEMPLATE_PATH.read_text(encoding="utf-8")
+    html = template.replace("{{PREVIEW_DATA_JSON}}", escape(json.dumps(preview_manifest), quote=False))
+    output.write_text(html, encoding="utf-8")
+    return output
 
 
 def _write_page(
@@ -151,4 +167,4 @@ def _script_sentences(script: str) -> tuple[str, ...]:
     return (cleaned,)
 
 
-__all__ = ["render_intermission_page", "render_segment_page"]
+__all__ = ["render_intermission_page", "render_preview_index", "render_segment_page"]
