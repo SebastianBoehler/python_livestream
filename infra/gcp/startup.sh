@@ -71,7 +71,7 @@ Requires=docker.service
 
 [Service]
 Type=simple
-ExecStartPre=/var/lib/hb-livestream/prepare.sh
+ExecStartPre=/bin/bash /var/lib/hb-livestream/prepare.sh
 ExecStartPre=-/usr/bin/docker rm -f hb-youtube-stream
 ExecStart=/usr/bin/docker run --rm --name hb-youtube-stream \\
   --shm-size=2g \\
