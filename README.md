@@ -1,11 +1,18 @@
 # Python Livestream Toolkit
 
-Python Livestream Toolkit automates a YouTube livestream by collecting topic-specific source material, generating spoken scripts with an LLM, rendering narration with TTS, composing a branded local studio page, and publishing continuously through FFmpeg.
+Python Livestream Toolkit provides two explicit YouTube playout modes:
 
-The runtime is built around a buffered producer-consumer pipeline so research, narration, and playout can overlap cleanly. It now ships with an HB Capital crypto desk profile and supports reusable show configs for any niche that can be expressed as a set of sources plus an editorial format.
+- a minimal continuous terminal feed that captures one public market page at a fixed, high-quality `1080p30`
+- an optional narrated show that researches topics, generates scripts and TTS, and composes a branded studio page
+
+The continuous terminal feed is the default container path. It navigates to `STREAM_URL` once and keeps one FFmpeg process attached to an isolated Xvfb display. The narrated runtime remains available through `stream_url.py` and its buffered producer-consumer pipeline.
 
 ## What It Does
 
+- Streams a public terminal page without exposing the host desktop
+- Publishes `1920x1080` at `30 FPS` with H.264 High, 10 Mbps CBR, a two-second GOP, and silent AAC audio
+- Uses encrypted RTMPS for remote ingest and rejects plaintext remote RTMP endpoints
+- Keeps stream credentials out of logs and out of Chromium/FFmpeg child environments
 - Loads a reusable show profile from `shows/*.toml`
 - Pulls source material from `rss`, `webpage`, `json`, or `manual` adapters
 - Builds a local browser-based studio page with headline, source cards, ticker, and branding
@@ -49,8 +56,10 @@ The runtime is split into small modules:
 2. `llm/` builds prompts and routes script generation
 3. `tts/` renders narration
 4. `broadcast/pipeline.py` prepares queued segments and local studio pages
-5. `broadcast/streaming.py` handles FFmpeg playout
+5. `broadcast/streaming.py` handles narrated FFmpeg playout
 6. `broadcast/memory.py` records prior coverage context per show
+
+The dedicated continuous path is split across `stream_terminal.py` and the small `broadcast/terminal_stream*.py` modules. See [docs/terminal-stream.md](/Users/sebastianboehler/Documents/GitHub/python_livestream/docs/terminal-stream.md) for its operating contract.
 
 More detail lives in [docs/architecture.md](/Users/sebastianboehler/Documents/GitHub/python_livestream/docs/architecture.md).
 
@@ -74,22 +83,17 @@ Copy [.env.example](/Users/sebastianboehler/Documents/GitHub/python_livestream/.
 Common settings:
 
 ```dotenv
-YOUTUBE_STREAM_KEY=<your-youtube-stream-key>
-SHOW_ID=hb_capital
-STREAM_URL=https://example.com
-SEGMENT_BUFFER_SIZE=3
-STREAM_CAPTURE_BACKEND=playwright
-STREAM_ORIENTATION=landscape
-STREAM_FPS=12
-INTER_SEGMENT_MUSIC_SECONDS=0
-NEWS_LLM_PROVIDER_ORDER=xai
+STREAM_URL=https://www.hb-capital.app/livestream
+YOUTUBE_STREAM_KEY_FILE=/run/secrets/youtube_stream_key
 ```
+
+For local development only, `YOUTUBE_STREAM_KEY` is accepted as a fallback. Production should mount the key as a readable, tightly permissioned file and set `YOUTUBE_STREAM_KEY_FILE`; if the file setting is present but unreadable or empty, startup fails instead of falling back to the environment.
 
 Notes:
 
 - `SHOW_ID` selects a profile in `shows/`
 - `SHOW_CONFIG_PATH` can point to any custom TOML file
-- `STREAM_URL` is only required if your selected show profile references it
+- `STREAM_URL` is always required by the continuous feed and by narrated profiles that reference it
 - `NEWS_SEGMENT_SECONDS` is still supported as a global duration override
 - `hb_capital` uses an HB Capital scene pack with overlay desk shots, clean-feed terminal views, and branded transitions
 
@@ -101,7 +105,17 @@ Provider credentials depend on which services you use:
 - `ELEVENLABS_API_KEY`
 - `HF_TOKEN`
 
-### Run the livestream
+### Run the continuous terminal feed
+
+```bash
+python stream_terminal.py
+```
+
+This entry point is Linux-only because it uses Xvfb and X11 capture. On macOS, use the container or a Linux VM.
+
+For a receiver-free VM burn-in, set `STREAM_OUTPUT_FILE=/tmp/terminal.flv`, stop the stream after the soak window, and inspect it with `ffprobe`. This is mutually exclusive with `STREAM_OUTPUT_URL`.
+
+### Run the narrated show
 
 ```bash
 python stream_url.py
@@ -185,12 +199,13 @@ scene_mode = "overlay"
 
 ## Docker
 
-The default [Dockerfile](/Users/sebastianboehler/Documents/GitHub/python_livestream/Dockerfile) is optimized for continuous streaming on lightweight Linux hosts:
+The default [Dockerfile](/Users/sebastianboehler/Documents/GitHub/python_livestream/Dockerfile) is optimized for the continuous terminal feed on Linux hosts:
 
 - base image: `python:3.11-slim-bookworm`
 - isolated Chromium capture via Xvfb
-- Linux-safe `libx264` encoding by default
+- fixed `1080p30` `libx264` encoding for stable YouTube quality
 - only streaming/runtime dependencies installed
+- a non-root runtime user with Chromium's sandbox left enabled
 
 Build and run it:
 
@@ -205,7 +220,13 @@ For persistent operation:
 docker compose up -d
 ```
 
-The included [docker-compose.yml](/Users/sebastianboehler/Documents/GitHub/python_livestream/docker-compose.yml) defaults `STREAM_CAPTURE_BACKEND` to `virtual-screen` and uses `restart: unless-stopped`.
+The included [docker-compose.yml](/Users/sebastianboehler/Documents/GitHub/python_livestream/docker-compose.yml) uses the dedicated virtual-screen path and `restart: unless-stopped`.
+
+The narrated show remains an opt-in Compose profile:
+
+```bash
+docker compose --profile narrated up narrated
+```
 
 ### GPU image
 

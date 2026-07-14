@@ -40,6 +40,7 @@ class VirtualDisplayHandle:
 @contextmanager
 def managed_virtual_display(
     config: CaptureBackendConfig,
+    process_environment: dict[str, str] | None = None,
 ) -> VirtualDisplayHandle | None:
     if not config.uses_virtual_screen_capture:
         yield None
@@ -71,6 +72,7 @@ def managed_virtual_display(
         stdout=subprocess.DEVNULL,
         stderr=subprocess.PIPE,
         text=True,
+        env=process_environment,
     )
     _wait_until_ready(process, socket_path)
     handle = VirtualDisplayHandle(display=config.virtual_display, process=process)

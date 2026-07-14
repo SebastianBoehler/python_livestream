@@ -1,5 +1,20 @@
 # Livestream Architecture
 
+## Continuous Terminal Path
+
+`stream_terminal.py` is the default lightweight container entry point. It is intentionally separate from the narrated show pipeline:
+
+1. validate a public HTTPS `STREAM_URL` and an RTMPS output
+2. start a fixed `1920x1080` Xvfb display
+3. launch sandboxed Chromium with a minimal, secret-free environment
+4. navigate once and reject an unexpected redirect such as a login page
+5. wait for the page to become visible
+6. start one FFmpeg process for the lifetime of the stream
+
+The video contract is fixed at `30 FPS`, H.264 High, 10 Mbps CBR, two B-frames, one reference frame, a 60-frame GOP, BT.709, and `yuv420p`. A generated silent stereo AAC track at 128 kbps keeps the output compatible with YouTube even though the terminal feed has no narration.
+
+Remote output must use RTMPS. Plain RTMP is accepted only for a loopback smoke-test endpoint. FFmpeg failures propagate as nonzero application exits so the container or VM supervisor can restart the service.
+
 ## Current Pipeline
 
 The livestream uses a buffered producer-consumer flow:

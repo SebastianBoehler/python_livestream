@@ -5,7 +5,18 @@ services:
     restart: unless-stopped
     env_file:
       - .env
-    shm_size: '1gb'
+    shm_size: '2gb'
+    command: python stream_terminal.py
+
+  narrated:
+    profiles:
+      - narrated
+    build: .
+    image: python-livestream
+    restart: unless-stopped
+    env_file:
+      - .env
+    shm_size: '2gb'
     environment:
       STREAM_CAPTURE_BACKEND: ${STREAM_CAPTURE_BACKEND:-virtual-screen}
     command: python stream_url.py

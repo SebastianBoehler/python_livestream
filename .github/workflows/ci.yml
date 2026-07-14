@@ -19,10 +19,20 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install FFmpeg
+      - name: Install stream system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y ffmpeg
+          sudo apt-get install -y ffmpeg xvfb
+
+      - name: Install Python dependencies
+        run: python -m pip install -r requirements-stream.txt
+
+      - name: Verify FFmpeg stream capabilities
+        run: |
+          ffmpeg -hide_banner -encoders 2>/dev/null | grep -q libx264
+          ffmpeg -hide_banner -filters 2>/dev/null | grep -q anullsrc
+          ffmpeg -hide_banner -protocols 2>/dev/null | grep -q '^  rtmps$'
+          command -v Xvfb
 
       - name: Compile Python sources
         run: python -m py_compile $(git ls-files '*.py')
