@@ -60,6 +60,10 @@ printf '%s' "$ACCESS_TOKEN" | docker login \
   --password-stdin \
   "https://${REGISTRY_HOST}" >/dev/null
 docker pull "$IMAGE_URI"
+CONTAINER_UID="$(docker run --rm --entrypoint id "$IMAGE_URI" -u)"
+CONTAINER_GID="$(docker run --rm --entrypoint id "$IMAGE_URI" -g)"
+chown "${CONTAINER_UID}:${CONTAINER_GID}" /run/hb-livestream/youtube.key
+chmod 0400 /run/hb-livestream/youtube.key
 docker logout "$REGISTRY_HOST" >/dev/null 2>&1 || true
 PREPARE
 chmod 0750 /var/lib/hb-livestream/prepare.sh
