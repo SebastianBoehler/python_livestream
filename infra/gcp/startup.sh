@@ -53,6 +53,8 @@ STREAM_URL=$STREAM_URL
 ENV
 
 REGISTRY_HOST="${IMAGE_URI%%/*}"
+export DOCKER_CONFIG=/run/hb-livestream/docker-config
+install -d -m 0700 "$DOCKER_CONFIG"
 printf '%s' "$ACCESS_TOKEN" | docker login \
   --username oauth2accesstoken \
   --password-stdin \
