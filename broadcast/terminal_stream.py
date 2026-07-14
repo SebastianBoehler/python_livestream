@@ -15,6 +15,7 @@ from urllib.parse import urlsplit
 
 from broadcast.capture import CaptureBackendConfig
 from broadcast.terminal_stream_config import (
+    STREAM_DISPLAY_HEIGHT,
     STREAM_FPS,
     STREAM_HEIGHT,
     STREAM_WIDTH,
@@ -40,7 +41,7 @@ def _capture_backend(config: TerminalStreamConfig) -> CaptureBackendConfig:
         orientation="landscape",
         fps=STREAM_FPS,
         width=STREAM_WIDTH,
-        height=STREAM_HEIGHT,
+        height=STREAM_DISPLAY_HEIGHT,
         browser_fullscreen=True,
         screen_device="",
         pixel_format="",
@@ -94,6 +95,21 @@ def _browser_launch_kwargs(browser_environment: dict[str, str]) -> dict:
     }
 
 
+def _content_capture_offset_y(browser_chrome_height: object) -> int:
+    max_offset = STREAM_DISPLAY_HEIGHT - STREAM_HEIGHT
+    if (
+        isinstance(browser_chrome_height, bool)
+        or not isinstance(browser_chrome_height, (int, float))
+    ):
+        raise TerminalStreamRuntimeError("Chromium returned invalid window geometry")
+    offset = round(browser_chrome_height)
+    if offset < 0 or offset > max_offset:
+        raise TerminalStreamRuntimeError(
+            "Chromium window chrome does not fit within the capture display"
+        )
+    return offset
+
+
 def _forward_ffmpeg_stderr(stderr: TextIO, output_target: str) -> None:
     for raw_line in stderr:
         safe_line = redact_ffmpeg_log_line(raw_line.rstrip(), output_target)
@@ -129,8 +145,6 @@ async def run_terminal_stream(config: TerminalStreamConfig) -> None:
     ffmpeg_executable = shutil.which(config.ffmpeg_path)
     if ffmpeg_executable is None:
         raise TerminalStreamRuntimeError("FFmpeg executable was not found")
-    command = build_ffmpeg_command(config)
-    command[0] = ffmpeg_executable
     capture_backend = _capture_backend(config)
 
     child_environment = _minimal_child_environment(config.display)
@@ -165,8 +179,19 @@ async def run_terminal_stream(config: TerminalStreamConfig) -> None:
                     await page.wait_for_selector("body", state="visible", timeout=30_000)
                     await page.wait_for_timeout(5_000)
 
+                    browser_chrome_height = await page.evaluate(
+                        "window.outerHeight - window.innerHeight"
+                    )
+                    capture_offset_y = _content_capture_offset_y(browser_chrome_height)
+                    command = build_ffmpeg_command(
+                        config,
+                        capture_offset_y=capture_offset_y,
+                    )
+                    command[0] = ffmpeg_executable
+
                     logger.info(
-                        "Starting 1920x1080@30 terminal stream with command: %s",
+                        "Starting 1920x1080@30 terminal stream at y=%s with command: %s",
+                        capture_offset_y,
                         safe_ffmpeg_command(command),
                     )
                     process = subprocess.Popen(

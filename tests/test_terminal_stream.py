@@ -4,6 +4,7 @@ from pathlib import Path
 
 from broadcast.terminal_stream import (
     _browser_launch_kwargs,
+    _content_capture_offset_y,
     _minimal_child_environment,
     _validate_final_page_url,
 )
@@ -131,7 +132,7 @@ class TerminalStreamCommandTests(unittest.TestCase):
         )
 
     def test_command_uses_fixed_high_quality_low_latency_contract(self) -> None:
-        command = build_ffmpeg_command(self.config)
+        command = build_ffmpeg_command(self.config, capture_offset_y=88)
 
         self.assertEqual(command[-1], self.config.output_url)
         self.assertIn("1920x1080", command)
@@ -148,6 +149,7 @@ class TerminalStreamCommandTests(unittest.TestCase):
         self.assertNotIn("zerolatency", command)
         self.assertEqual(command[command.index("-stats_period") + 1], "5")
         self.assertEqual(command[command.index("-progress") + 1], "pipe:2")
+        self.assertIn(":99.0+0,88", command)
 
     def test_safe_command_redacts_output_path_and_query(self) -> None:
         safe_command = safe_ffmpeg_command(build_ffmpeg_command(self.config))
@@ -173,6 +175,13 @@ class TerminalStreamCommandTests(unittest.TestCase):
 
 
 class TerminalStreamBrowserSecurityTests(unittest.TestCase):
+    def test_browser_chrome_height_is_bounded_to_display_overscan(self) -> None:
+        self.assertEqual(_content_capture_offset_y(88), 88)
+        for invalid_height in (-1, 121, True, "88"):
+            with self.subTest(invalid_height=invalid_height):
+                with self.assertRaises(TerminalStreamRuntimeError):
+                    _content_capture_offset_y(invalid_height)
+
     def test_browser_child_environment_excludes_application_secrets(self) -> None:
         environment = _minimal_child_environment(
             ":99",

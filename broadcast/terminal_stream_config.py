@@ -12,6 +12,7 @@ from urllib.parse import SplitResult, urlsplit
 
 STREAM_WIDTH = 1920
 STREAM_HEIGHT = 1080
+STREAM_DISPLAY_HEIGHT = 1200
 STREAM_FPS = 30
 YOUTUBE_RTMPS_BASE_URL = "rtmps://a.rtmps.youtube.com/live2"
 _STREAM_KEY_PATTERN = re.compile(r"^[A-Za-z0-9_-]{8,128}$")

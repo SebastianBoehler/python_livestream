@@ -14,7 +14,11 @@ from broadcast.terminal_stream_config import (
 )
 
 
-def build_ffmpeg_command(config: TerminalStreamConfig) -> list[str]:
+def build_ffmpeg_command(
+    config: TerminalStreamConfig,
+    *,
+    capture_offset_y: int = 0,
+) -> list[str]:
     """Build the fixed 1080p30 low-latency YouTube ingest command."""
     return [
         config.ffmpeg_path,
@@ -37,7 +41,7 @@ def build_ffmpeg_command(config: TerminalStreamConfig) -> list[str]:
         "-video_size",
         f"{STREAM_WIDTH}x{STREAM_HEIGHT}",
         "-i",
-        f"{config.display}.0+0,0",
+        f"{config.display}.0+0,{capture_offset_y}",
         "-f",
         "lavfi",
         "-i",
