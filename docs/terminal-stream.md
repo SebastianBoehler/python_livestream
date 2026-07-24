@@ -11,7 +11,7 @@ The continuous stream publishes one public terminal view without involving the L
 - keyframes: every 60 frames, exactly two seconds
 - audio: generated silent stereo AAC, 48 kHz, 128 kbps
 - production output: RTMPS
-- process model: one browser navigation and one long-running FFmpeg process
+- process model: one browser navigation with in-process FFmpeg reconnects
 
 The application rejects a redirect to a different page before FFmpeg starts. The sole canonicalization exception is the same HTTPS path moving from a bare hostname to its `www` hostname. This prevents accidentally broadcasting a login screen when a private terminal route loses authentication. Use a deliberately public market-only URL for unattended streaming.
 
@@ -52,7 +52,11 @@ docker run --rm \
 
 The mounted key must be readable by the container's unprivileged runtime user while remaining inaccessible to unrelated host users. Do not bake it into the image.
 
-For long-running use, `docker compose up -d` adds `restart: unless-stopped`. A nonzero FFmpeg exit terminates the application and lets Compose restart it.
+For long-running use, `docker compose up -d` adds `restart: unless-stopped`.
+Unexpected FFmpeg exits reconnect after 1, 2, 5, and then at most 10 seconds
+without restarting Chromium or Xvfb. The backoff resets after an FFmpeg session
+runs for five minutes. Compose remains responsible for fatal configuration,
+browser, virtual-display, or container failures.
 
 ## Local RTMP Smoke Endpoint
 

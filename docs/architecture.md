@@ -9,11 +9,16 @@
 3. launch sandboxed Chromium with a minimal, secret-free environment
 4. navigate once and reject an unexpected redirect such as a login page
 5. wait for the page to become visible
-6. start one FFmpeg process for the lifetime of the stream
+6. supervise FFmpeg for the lifetime of the stream and reconnect its output
+   without restarting the browser or virtual display
 
 The video contract is fixed at `30 FPS`, H.264 High, 10 Mbps CBR, two B-frames, one reference frame, a 60-frame GOP, BT.709, and `yuv420p`. A generated silent stereo AAC track at 128 kbps keeps the output compatible with YouTube even though the terminal feed has no narration.
 
-Remote output must use RTMPS. Plain RTMP is accepted only for a loopback smoke-test endpoint. FFmpeg failures propagate as nonzero application exits so the container or VM supervisor can restart the service.
+Remote output must use RTMPS. Plain RTMP is accepted only for a loopback
+smoke-test endpoint. Unexpected FFmpeg exits reconnect in process with a short
+bounded backoff. Fatal configuration, browser, virtual-display, and process
+startup failures still propagate so the container or VM supervisor can restart
+the service.
 
 ## Current Pipeline
 

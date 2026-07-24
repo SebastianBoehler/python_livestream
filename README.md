@@ -5,7 +5,7 @@ Python Livestream Toolkit provides two explicit YouTube playout modes:
 - a minimal continuous terminal feed that captures one public market page at a fixed, high-quality `1080p30`
 - an optional narrated show that researches topics, generates scripts and TTS, and composes a branded studio page
 
-The continuous terminal feed is the default container path. It navigates to `STREAM_URL` once and keeps one FFmpeg process attached to an isolated Xvfb display. The narrated runtime remains available through `stream_url.py` and its buffered producer-consumer pipeline.
+The continuous terminal feed is the default container path. It navigates to `STREAM_URL` once and keeps Chromium and Xvfb alive while FFmpeg reconnects in process after transient output failures. The narrated runtime remains available through `stream_url.py` and its buffered producer-consumer pipeline.
 
 ## What It Does
 

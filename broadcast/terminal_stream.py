@@ -7,10 +7,8 @@ import logging
 import os
 import signal
 import shutil
-import subprocess
 from collections.abc import Mapping
 from contextlib import suppress
-from typing import TextIO
 from urllib.parse import urlsplit
 
 from broadcast.capture import CaptureBackendConfig
@@ -26,10 +24,9 @@ from broadcast.terminal_stream_config import (
 )
 from broadcast.terminal_stream_ffmpeg import (
     build_ffmpeg_command,
-    redact_ffmpeg_log_line,
-    raise_for_ffmpeg_exit,
     safe_ffmpeg_command,
 )
+from broadcast.terminal_stream_process import run_ffmpeg_with_reconnect
 from broadcast.virtual_display import managed_virtual_display
 
 logger = logging.getLogger(__name__)
@@ -110,13 +107,6 @@ def _content_capture_offset_y(browser_chrome_height: object) -> int:
     return offset
 
 
-def _forward_ffmpeg_stderr(stderr: TextIO, output_target: str) -> None:
-    for raw_line in stderr:
-        safe_line = redact_ffmpeg_log_line(raw_line.rstrip(), output_target)
-        if safe_line:
-            logger.info("FFmpeg: %s", safe_line)
-
-
 def _validate_final_page_url(expected: str, actual: str) -> None:
     expected_url = urlsplit(expected)
     actual_url = urlsplit(actual)
@@ -141,7 +131,7 @@ def _validate_final_page_url(expected: str, actual: str) -> None:
 
 
 async def run_terminal_stream(config: TerminalStreamConfig) -> None:
-    """Navigate once, then keep one FFmpeg process attached to the display."""
+    """Navigate once, then supervise FFmpeg against the same display."""
     ffmpeg_executable = shutil.which(config.ffmpeg_path)
     if ffmpeg_executable is None:
         raise TerminalStreamRuntimeError("FFmpeg executable was not found")
@@ -194,39 +184,11 @@ async def run_terminal_stream(config: TerminalStreamConfig) -> None:
                         capture_offset_y,
                         safe_ffmpeg_command(command),
                     )
-                    process = subprocess.Popen(
+                    await run_ffmpeg_with_reconnect(
                         command,
-                        stdin=subprocess.DEVNULL,
-                        stdout=subprocess.DEVNULL,
-                        stderr=subprocess.PIPE,
-                        text=True,
-                        env=child_environment,
+                        environment=child_environment,
+                        output_target=config.output_target,
                     )
-                    if process.stderr is None:
-                        process.terminate()
-                        raise TerminalStreamRuntimeError(
-                            "FFmpeg stderr monitor could not start"
-                        )
-                    stderr_task = asyncio.create_task(
-                        asyncio.to_thread(
-                            _forward_ffmpeg_stderr,
-                            process.stderr,
-                            config.output_target,
-                        )
-                    )
-                    try:
-                        return_code = await asyncio.to_thread(process.wait)
-                    except asyncio.CancelledError:
-                        process.terminate()
-                        try:
-                            await asyncio.to_thread(process.wait, 10)
-                        except subprocess.TimeoutExpired:
-                            process.kill()
-                            await asyncio.to_thread(process.wait)
-                        raise
-                    finally:
-                        await stderr_task
-                    raise_for_ffmpeg_exit(return_code)
                 finally:
                     await browser.close()
         except TerminalStreamRuntimeError:
@@ -238,7 +200,7 @@ async def run_terminal_stream(config: TerminalStreamConfig) -> None:
 
 
 async def run_terminal_stream_until_stopped(config: TerminalStreamConfig) -> None:
-    """Run until FFmpeg exits or the container receives SIGINT/SIGTERM."""
+    """Run until a fatal runtime error or the container receives a stop signal."""
     loop = asyncio.get_running_loop()
     stop_requested = asyncio.Event()
     registered_signals: list[signal.Signals] = []
